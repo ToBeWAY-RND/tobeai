@@ -78,6 +78,7 @@ export type IAgentReasoning = {
   usedTools?: any[];
   artifacts?: FileUpload[];
   sourceDocuments?: any[];
+  menus?: any[];
   instructions?: string;
   nextAgent?: string;
 };
@@ -111,6 +112,7 @@ export type MessageType = {
   message: string;
   type: messageType;
   sourceDocuments?: any;
+  menus?: any;
   fileAnnotations?: any;
   fileUploads?: Partial<FileUpload>[];
   artifacts?: Partial<FileUpload>[];
@@ -566,6 +568,16 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     });
   };
 
+  const updateLastMessageMenus = (menus: any[]) => {
+    setMessages((prevMessages) => {
+      const allMessages = [...cloneDeep(prevMessages)];
+      if (allMessages[allMessages.length - 1].type === 'userMessage') return allMessages;
+      allMessages[allMessages.length - 1].menus = menus;
+      addChatMessage(allMessages);
+      return allMessages;
+    });
+  };
+
   const updateLastMessageFileAnnotations = (fileAnnotations: any) => {
     setMessages((prevMessages) => {
       const allMessages = [...cloneDeep(prevMessages)];
@@ -757,6 +769,9 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
             break;
           case 'usedTools':
             updateLastMessageUsedTools(payload.data);
+            break;
+          case 'menus':
+            updateLastMessageMenus(payload.data);
             break;
           case 'fileAnnotations':
             updateLastMessageFileAnnotations(payload.data);
@@ -996,6 +1011,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
             id: data?.chatMessageId,
             sourceDocuments: data?.sourceDocuments,
             usedTools: data?.usedTools,
+            menus: data?.menus,
             fileAnnotations: data?.fileAnnotations,
             agentReasoning: data?.agentReasoning,
             agentFlowExecutedData: data?.agentFlowExecutedData,

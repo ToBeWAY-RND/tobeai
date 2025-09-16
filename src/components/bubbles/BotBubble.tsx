@@ -20,6 +20,9 @@ type Props = {
   fileAnnotations?: any;
   showAvatar?: boolean;
   avatarSrc?: string;
+  avatarLoadingSrc?: string;
+  avatarInfoSrc?: string;
+  avatarEmptySrc?: string;
   backgroundColor?: string;
   backgroundColorEmphasize?: string;
   textColor?: string;
@@ -393,12 +396,24 @@ export const BotBubble = (props: Props) => {
       return '';
     }
   };
-
+  const getAvatarSrcSrc = (sourceDocuments: any[], isLoading: boolean, messageType: string, message: string) => {
+    if(isLoading && messageType === 'apiMessage') {
+      return props.avatarLoadingSrc;
+    } else if(props.message.sourceDocuments) {
+      if(props.message.sourceDocuments.length === 0) {
+        return props.avatarEmptySrc;
+      } else {
+        return props.avatarInfoSrc;
+      }
+    } else {
+      return props.avatarSrc;
+    }    
+  };
   return (
     <div>
       <div class="flex flex-row justify-start mb-2 items-start host-container" style={{ 'margin-right': '50px' }}>
         <Show when={props.showAvatar}>
-          <Avatar initialAvatarSrc={props.avatarSrc} />
+          <Avatar initialAvatarSrc={getAvatarSrcSrc(props.message.sourceDocuments, props?.isLoading, props.message.type, props.message.message)} />
         </Show>
         <div class="flex flex-col justify-start">
           {props.showAgentMessages &&
@@ -514,7 +529,7 @@ export const BotBubble = (props: Props) => {
                     <SourceBubble
                       index={index()}
                       chunkContent={URL ? URL.pathname : src.metadata.chunkContent}
-                      title={src.metadata.section.text}
+                      title={src.metadata.section ? src.metadata.section.text : ""}
                       imageSrc={src.metadata.related_image && src.metadata.related_image.length > 0 ? src.metadata.related_image[0] : undefined}
                       onSourceClick={() => {
                         if (URL) {

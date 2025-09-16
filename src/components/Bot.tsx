@@ -22,6 +22,7 @@ import {
   FeedbackTheme,
   DisclaimerPopUpTheme,
   DateTimeToggleTheme,
+  ComboBoxTheme, 
 } from '@/features/bubble/types';
 import { Badge } from './Badge';
 import { Popup, DisclaimerPopup } from '@/features/popup';
@@ -126,6 +127,7 @@ export type MessageType = {
   id?: string;
   followUpPrompts?: string;
   dateTime?: string;
+  refreshTrigger?: number;
 };
 
 type IUploads = {
@@ -143,6 +145,8 @@ export type BotProps = {
   apiHost?: string;
   onRequest?: (request: RequestInit) => Promise<void>;
   chatflowConfig?: Record<string, unknown>;
+  gptModels?: ComboBoxTheme;
+  mdmModules?: ComboBoxTheme;
   backgroundColor?: string;
   welcomeMessage?: string;
   errorMessage?: string;
@@ -539,7 +543,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
   const updateErrorMessage = (errorMessage: string) => {
     setMessages((prevMessages) => {
       const allMessages = [...cloneDeep(prevMessages)];
-      allMessages.push({ message: props.errorMessage || errorMessage, type: 'apiMessage' });
+      allMessages.push({ message: props.errorMessage || errorMessage, type: 'apiMessage', sourceDocuments: [] });
       addChatMessage(allMessages);
       return allMessages;
     });
@@ -603,7 +607,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
   const updateAgentFlowEvent = (event: string) => {
     if (event === 'INPROGRESS') {
-      setMessages((prevMessages) => [...prevMessages, { message: '', type: 'apiMessage', agentFlowEventStatus: event }]);
+      setMessages((prevMessages) => [...prevMessages, { message: '', type: 'apiMessage', agentFlowEventStatus: event, sourceDocuments: [] }]);
     } else {
       setMessages((prevMessages) => {
         const allMessages = [...cloneDeep(prevMessages)];
@@ -660,7 +664,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       errMessage = props.errorMessage;
     }
     setMessages((prevMessages) => {
-      const messages: MessageType[] = [...prevMessages, { message: errMessage, type: 'apiMessage' }];
+      const messages: MessageType[] = [...prevMessages, { message: errMessage, type: 'apiMessage', sourceDocuments: [] }];
       addChatMessage(messages);
       return messages;
     });
@@ -759,7 +763,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         const payload = JSON.parse(ev.data);
         switch (payload.event) {
           case 'start':
-            setMessages((prevMessages) => [...prevMessages, { message: '', type: 'apiMessage' }]);
+            setMessages((prevMessages) => [...prevMessages, { message: '', type: 'apiMessage', sourceDocuments: [] }]);
             break;
           case 'token':
             updateLastMessage(payload.data);
@@ -823,6 +827,21 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     setUserInput('');
     setUploadedFiles([]);
     hasSoundPlayed = false;
+    
+    // Force BotBubble refresh by updating the last message
+    setMessages((prevMessages) => {
+      const allMessages = [...cloneDeep(prevMessages)];
+      if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {
+        // Add a small update to trigger re-render
+        allMessages[allMessages.length - 1] = {
+          ...allMessages[allMessages.length - 1],
+          // Force refresh by adding a timestamp to trigger reactivity
+          refreshTrigger: Date.now()
+        };
+      }
+      return allMessages;
+    });
+    
     setTimeout(() => {
       scrollToBottom();
     }, 100);
@@ -1131,7 +1150,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       const messages: MessageType[] = [
         {
           message: props.welcomeMessage ?? defaultWelcomeMessage,
-          type: 'apiMessage',
+          type: 'apiMessage'
         },
       ];
       if (leadsConfig()?.status && !getLocalStorageChatflow(props.chatflowid)?.lead) {
@@ -1231,7 +1250,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                   typeof message.agentFlowExecutedData === 'string' ? JSON.parse(message.agentFlowExecutedData) : message.agentFlowExecutedData;
               return chatHistory;
             })
-          : [{ message: props.welcomeMessage ?? defaultWelcomeMessage, type: 'apiMessage' }];
+          : [{ message: props.welcomeMessage ?? defaultWelcomeMessage, type: 'apiMessage', sourceDocuments: [] }];
 
       const filteredMessages = loadedMessages.filter((message) => message.type !== 'leadCaptureMessage');
       setMessages([...filteredMessages]);
@@ -1357,6 +1376,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         {
           message: props.welcomeMessage ?? defaultWelcomeMessage,
           type: 'apiMessage',
+          sourceDocuments: [],
         },
       ]);
     };
@@ -1746,15 +1766,11 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
               <div style={{ flex: 1 }} />
               <div class="flex items-center px-3">
                 <ComboBox
-                  options={[
-                    { value: 'gpt-4o-mini', label: 'gpt-4o-mini' },
-                    { value: 'gpt-5-mini', label: 'gpt-5-mini' },
-                  ]}
-                  label="모델"
-                  defaultValue={(botProps.chatflowConfig?.vars as any)?.gptModel || 'gpt-4o-mini'}
-                  placeholder="옵션을 선택하세요"
+                  options={props.gptModels?.values || []}
+                  label={props.gptModels?.label}
+                  defaultValue={props.gptModels?.defaultValue}
                   onChange={(value: string) => {
-                    // 선택된 MDM 모듈 값을 chatflowConfig에 저장
+                    // 선택된 모델델 값을 chatflowConfig에 저장
                     if (botProps.chatflowConfig?.vars) {
                       (botProps.chatflowConfig.vars as any).gptModel = value;
                     }
@@ -1764,17 +1780,10 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
               </div>
               <div class="flex items-center px-3">
                 <ComboBox
-                  options={[
-                    { value: 'MDM', label: 'MDM' },
-                    { value: 'DOM', label: 'DOM' },
-                    { value: 'DQM', label: 'DQM' },
-                    { value: 'META', label: 'META' },
-                    { value: 'DI', label: 'DI' },
-                    { value: 'SNOP', label: 'S&OP' },
-                  ]}
-                  label="모듈"
-                  defaultValue={(botProps.chatflowConfig?.vars as any)?.mdmModule || 'MDM'}
-                  placeholder="옵션을 선택하세요"
+                  options={props.mdmModules?.values || []}
+                  label={props.mdmModules?.label}
+                  defaultValue={props.mdmModules?.defaultValue}
+                  placeholder="모듈을 선택하세요"
                   onChange={(value: string) => {
                     // 선택된 MDM 모듈 값을 chatflowConfig에 저장
                     if (botProps.chatflowConfig?.vars) {
@@ -1831,6 +1840,9 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                           feedbackColor={props.feedback?.color}
                           showAvatar={props.botMessage?.showAvatar}
                           avatarSrc={props.botMessage?.avatarSrc}
+                          avatarLoadingSrc={props.botMessage?.avatarLoadingSrc}
+                          avatarInfoSrc={props.botMessage?.avatarInfoSrc}
+                          avatarEmptySrc={props.botMessage?.avatarEmptySrc}
                           chatFeedbackStatus={chatFeedbackStatus()}
                           fontSize={props.fontSize}
                           isLoading={loading() && index() === messages().length - 1}

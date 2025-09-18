@@ -45,7 +45,7 @@ const FeedbackContentDialog = (props: FeedbackContentDialogProps) => {
                 border: '1px solid #eeeeee',
               }}
             >
-              <span class="whitespace-pre-wrap font-semibold max-w-full">Provide additional feedback</span>
+              <span class="whitespace-pre-wrap font-semibold max-w-full">추가 피드백 작성</span>
               <button
                 class="p-1 ml-auto bg-transparent border-0 text-black float-right text-xl leading-none font-semibold outline-none focus:outline-none"
                 type="button"
@@ -80,7 +80,7 @@ const FeedbackContentDialog = (props: FeedbackContentDialogProps) => {
                   border: '1px solid #eeeeee',
                   color: props.textColor ?? defaultTextColor,
                 }}
-                placeholder="What do you think of the response?"
+                placeholder="지금 메세지에 대해 어떻게 생각 하시나요?"
                 value={inputValue()}
               />
             </div>
@@ -90,7 +90,7 @@ const FeedbackContentDialog = (props: FeedbackContentDialogProps) => {
                 type="button"
                 onClick={submit}
               >
-                Submit Feedback
+                피드백 보내기
               </button>
             </div>
           </div>

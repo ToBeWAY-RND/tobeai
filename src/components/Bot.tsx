@@ -80,6 +80,7 @@ export type IAgentReasoning = {
   artifacts?: FileUpload[];
   sourceDocuments?: any[];
   menus?: any[];
+  mastSearches?: any[];
   instructions?: string;
   nextAgent?: string;
 };
@@ -114,6 +115,7 @@ export type MessageType = {
   type: messageType;
   sourceDocuments?: any;
   menus?: any;
+  mastSearches?: any;
   fileAnnotations?: any;
   fileUploads?: Partial<FileUpload>[];
   artifacts?: Partial<FileUpload>[];
@@ -582,6 +584,16 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     });
   };
 
+  const updateLastMessageMastSearches = (mastSearches: any[]) => {
+    setMessages((prevMessages) => {
+      const allMessages = [...cloneDeep(prevMessages)];
+      if (allMessages[allMessages.length - 1].type === 'userMessage') return allMessages;
+      allMessages[allMessages.length - 1].mastSearches = mastSearches;
+      addChatMessage(allMessages);
+      return allMessages;
+    });
+  };
+
   const updateLastMessageFileAnnotations = (fileAnnotations: any) => {
     setMessages((prevMessages) => {
       const allMessages = [...cloneDeep(prevMessages)];
@@ -776,6 +788,9 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
             break;
           case 'menus':
             updateLastMessageMenus(payload.data);
+            break;
+          case 'mastSearches':
+            updateLastMessageMastSearches(payload.data);
             break;
           case 'fileAnnotations':
             updateLastMessageFileAnnotations(payload.data);
@@ -1031,6 +1046,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
             sourceDocuments: data?.sourceDocuments,
             usedTools: data?.usedTools,
             menus: data?.menus,
+            mastSearches: data?.mastSearches,
             fileAnnotations: data?.fileAnnotations,
             agentReasoning: data?.agentReasoning,
             agentFlowExecutedData: data?.agentFlowExecutedData,
@@ -1778,21 +1794,26 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                   style={{ width: '120px' }}
                 />
               </div>
-              <div class="flex items-center px-3">
-                <ComboBox
-                  options={props.mdmModules?.values || []}
-                  label={props.mdmModules?.label}
-                  defaultValue={props.mdmModules?.defaultValue}
-                  placeholder="모듈을 선택하세요"
-                  onChange={(value: string) => {
-                    // 선택된 MDM 모듈 값을 chatflowConfig에 저장
-                    if (botProps.chatflowConfig?.vars) {
-                      (botProps.chatflowConfig.vars as any).mdmModule = value;
-                    }
-                  }}
-                  style={{ width: '120px', 'margin-left': '2px' }}
-                />
-              </div>
+              {
+                props.mdmModules != undefined
+                && props.mdmModules.values != undefined
+                && props.mdmModules.values.length > 0
+                && (<div class="flex items-center px-3">
+                  <ComboBox
+                    options={props.mdmModules?.values || []}
+                    label={props.mdmModules?.label}
+                    defaultValue={props.mdmModules?.defaultValue}
+                    placeholder="모듈을 선택하세요"
+                    onChange={(value: string) => {
+                      // 선택된 MDM 모듈 값을 chatflowConfig에 저장
+                      if (botProps.chatflowConfig?.vars) {
+                        (botProps.chatflowConfig.vars as any).mdmModule = value;
+                      }
+                    }}
+                    style={{ width: '120px', 'margin-left': '2px' }}
+                  />
+                </div>)
+              }
               <DeleteButton
                 sendButtonColor={props.bubbleTextColor}
                 type="button"

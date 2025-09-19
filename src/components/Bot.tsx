@@ -505,9 +505,22 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     msgOverride?: Partial<MessageType>,
   ) => {
     try {
+      // Skip logging if the target AI message is the very first message (starter/welcome message)
+      const allMsgs = messages();
+      const candidate: any = msgOverride || getLastApiMessage();
+      if (allMsgs.length > 0 && allMsgs[0]?.type === 'apiMessage' && candidate) {
+        const first = allMsgs[0] as any;
+        const sameRef = first === candidate;
+        const sameId = first?.id && candidate?.id && first.id === candidate.id;
+        const sameMessageId = first?.messageId && candidate?.messageId && first.messageId === candidate.messageId;
+        if (sameRef || sameId || sameMessageId) {
+          return;
+        }
+      }
+
       const vars: any = (props.chatflowConfig as any)?.vars || {};
       const aimlHost: string | undefined = vars.aimlUrl;
-      const msg: any = msgOverride || getLastApiMessage();
+      const msg: any = candidate;
       const payload: any = {
         apiHost: props.apiHost || "",
         question: question,
@@ -567,6 +580,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
   };
 
   let hasSoundPlayed = false;
+
 
   const updateLastMessage = (text: string) => {
     setMessages((prevMessages) => {

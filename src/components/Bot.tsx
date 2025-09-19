@@ -1333,6 +1333,8 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                 rating: message.rating,
                 dateTime: message.dateTime,
               };
+              if (message.menus) chatHistory.menus = message.menus;
+              if (message.mastSearches) chatHistory.mastSearches = message.mastSearches;
               if (message.sourceDocuments) chatHistory.sourceDocuments = message.sourceDocuments;
               if (message.fileAnnotations) chatHistory.fileAnnotations = message.fileAnnotations;
               if (message.fileUploads) chatHistory.fileUploads = message.fileUploads;

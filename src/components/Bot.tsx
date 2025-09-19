@@ -8,6 +8,7 @@ import {
   getChatbotConfig,
   FeedbackRatingType,
   createAttachmentWithFormData,
+  sendMessageLog,
 } from '@/queries/sendMessageQuery';
 import { TextInput, ComboBox } from './inputs';
 import { GuestBubble } from './bubbles/GuestBubble';
@@ -496,6 +497,61 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     }, 50);
   };
 
+  const getLastApiMessage = () => {
+    const all = messages();
+    for (let i = all.length - 1; i >= 0; i--) {
+      if (all[i].type === 'apiMessage') return all[i];
+    }
+    return undefined;
+  };
+
+  const logMessageCompletion = async (
+    status: 'success' | 'abort' | 'error',
+    question?: string,
+    msgOverride?: Partial<MessageType>,
+  ) => {
+    try {
+      // Skip logging if the target AI message is the very first message (starter/welcome message)
+      const allMsgs = messages();
+      const candidate: any = msgOverride || getLastApiMessage();
+      if (allMsgs.length > 0 && allMsgs[0]?.type === 'apiMessage' && candidate) {
+        const first = allMsgs[0] as any;
+        const sameRef = first === candidate;
+        const sameId = first?.id && candidate?.id && first.id === candidate.id;
+        const sameMessageId = first?.messageId && candidate?.messageId && first.messageId === candidate.messageId;
+        if (sameRef || sameId || sameMessageId) {
+          return;
+        }
+      }
+
+      const vars: any = (props.chatflowConfig as any)?.vars || {};
+      const aimlHost: string | undefined = vars.aimlUrl;
+      const msg: any = candidate;
+      const payload: any = {
+        apiHost: props.apiHost || "",
+        question: question,
+        chatId: chatId(),
+        dateTime: msg?.dateTime || new Date().toISOString(),
+        message: msg?.message || '',
+        messageId: msg?.id || msg?.messageId,
+        domainId: vars?.domainId,
+        gptModel: vars?.gptModel,
+        langCode: vars?.langCode,
+        userId: vars?.userId,
+        chatType: vars?.chatType,
+        status,
+      };
+      await sendMessageLog({
+        chatflowid: props.chatflowid,
+        aimlHost: aimlHost,
+        body: payload as any,
+        onRequest: props.onRequest,
+      });
+    } catch (e) {
+      console.error('Failed to send message log', e);
+    }
+  };
+
   /**
    * Add each chat message into localStorage
    */
@@ -530,6 +586,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
   };
 
   let hasSoundPlayed = false;
+
 
   const updateLastMessage = (text: string) => {
     setMessages((prevMessages) => {
@@ -821,13 +878,27 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
             break;
           case 'error':
             updateErrorMessage(payload.data);
+            await logMessageCompletion('error', input);
             break;
           case 'abort':
             abortMessage();
+            await logMessageCompletion('abort', input);
             closeResponse();
             break;
           case 'end':
             setLocalStorageChatflow(chatflowid, chatId);
+            // ensure dateTime is populated on the last AI message
+            setMessages((prevMessages) => {
+              const allMessages = [...cloneDeep(prevMessages)];
+              if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {
+                if (!allMessages[allMessages.length - 1].dateTime) {
+                  allMessages[allMessages.length - 1].dateTime = new Date().toISOString();
+                }
+              }
+              addChatMessage(allMessages);
+              return allMessages;
+            });
+            await logMessageCompletion('success', input);
             closeResponse();
             break;
         }
@@ -837,6 +908,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       },
       onerror(err) {
         console.error('EventSource Error: ', err);
+        logMessageCompletion('error', input).catch((e) => console.error('logMessageCompletion failed', e));
         closeResponse();
         throw err;
       },
@@ -1044,28 +1116,30 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
         playReceiveSound();
 
+        const newMessage = {
+          message: text,
+          id: data?.chatMessageId,
+          sourceDocuments: data?.sourceDocuments,
+          usedTools: data?.usedTools,
+          menus: data?.menus,
+          mastSearches: data?.mastSearches,
+          fileAnnotations: data?.fileAnnotations,
+          agentReasoning: data?.agentReasoning,
+          agentFlowExecutedData: data?.agentFlowExecutedData,
+          action: data?.action,
+          artifacts: data?.artifacts,
+          type: 'apiMessage' as messageType,
+          feedback: null,
+          dateTime: new Date().toISOString(),
+        } as MessageType;
         setMessages((prevMessages) => {
           const allMessages = [...cloneDeep(prevMessages)];
-          const newMessage = {
-            message: text,
-            id: data?.chatMessageId,
-            sourceDocuments: data?.sourceDocuments,
-            usedTools: data?.usedTools,
-            menus: data?.menus,
-            mastSearches: data?.mastSearches,
-            fileAnnotations: data?.fileAnnotations,
-            agentReasoning: data?.agentReasoning,
-            agentFlowExecutedData: data?.agentFlowExecutedData,
-            action: data?.action,
-            artifacts: data?.artifacts,
-            type: 'apiMessage' as messageType,
-            feedback: null,
-            dateTime: new Date().toISOString(),
-          };
           allMessages.push(newMessage);
           addChatMessage(allMessages);
           return allMessages;
         });
+        // Log success for sync response
+        await logMessageCompletion('success', typeof value === 'string' ? (value as string) : undefined, newMessage);
 
         updateMetadata(data, value);
 
@@ -1077,6 +1151,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       if (result.error) {
         const error = result.error;
         console.error(error);
+        await logMessageCompletion('error', typeof value === 'string' ? (value as string) : undefined);
         if (typeof error === 'object') {
           handleError(`Error: ${error?.message.replaceAll('Error:', ' ')}`);
           return;

@@ -140,7 +140,7 @@ type IUploads = {
 }[];
 
 type observerConfigType = (accessor: string | boolean | object | MessageType[]) => void;
-export type observersConfigType = Record<'observeUserInput' | 'observeLoading' | 'observeMessages' | 'observeSourceClick', observerConfigType>;
+export type observersConfigType = Record<'observeUserInput' | 'observeLoading' | 'observeMessages' | 'observeSourceClick' | 'observeMenuClick', observerConfigType>;
 
 export type BotProps = {
   chatflowid: string;
@@ -395,6 +395,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
   const [sourcePopupOpen, setSourcePopupOpen] = createSignal(false);
   const [sourcePopupSrc, setSourcePopupSrc] = createSignal({});
   const [sourceClick, setSourceClick] = createSignal<any[]>([]);
+  const [menuClick, setMenuClick] = createSignal<any[]>([]);
   const [messages, setMessages] = createSignal<MessageType[]>(
     [
       {
@@ -455,7 +456,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
   onMount(() => {
     if (botProps?.observersConfig) {
-      const { observeUserInput, observeLoading, observeMessages, observeSourceClick } = botProps.observersConfig;
+      const { observeUserInput, observeLoading, observeMessages, observeSourceClick, observeMenuClick } = botProps.observersConfig;
       typeof observeUserInput === 'function' &&
         // eslint-disable-next-line solid/reactivity
         createMemo(() => {
@@ -475,6 +476,11 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         // eslint-disable-next-line solid/reactivity
         createMemo(() => {
           observeSourceClick(sourceClick());
+        });
+      typeof observeMenuClick === 'function' &&
+        // eslint-disable-next-line solid/reactivity
+        createMemo(() => {
+          observeMenuClick(menuClick());
         });
     }
 
@@ -1878,6 +1884,9 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                           renderHTML={props.renderHTML}
                           observeSourceClick={botProps.observersConfig?.observeSourceClick}
                           setSourceClick={setSourceClick}
+                          setMenuClick={setMenuClick}
+                          observeMenuClick={botProps.observersConfig?.observeMenuClick}
+                          langCode={(botProps.chatflowConfig?.vars as any).langCode}
                         />
                       )}
                       {message.type === 'leadCaptureMessage' && leadsConfig()?.status && !getLocalStorageChatflow(props.chatflowid)?.lead && (

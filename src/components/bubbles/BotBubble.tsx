@@ -37,7 +37,10 @@ type Props = {
   handleActionClick: (elem: any, action: IAction | undefined | null) => void;
   handleSourceDocumentsClick: (src: any) => void;
   observeSourceClick?: (messages: any) => void;
+  observeMenuClick?: (messages: any) => void;
   setSourceClick?: (updater: any[] | ((prev: any[]) => any[])) => void;
+  setMenuClick?: (updater: any[] | ((prev: any[]) => any[])) => void;
+  langCode?: string;
 };
 
 const defaultBackgroundColor = '#f7f8ff';
@@ -560,26 +563,49 @@ export const BotBubble = (props: Props) => {
             <div class={`flex items-center px-2 pb-2 ${props.showAvatar ? 'ml-10' : ''}`}>
               <CopyToClipboardButton feedbackColor={props.feedbackColor} onClick={() => copyMessageToClipboard()} />
               <Show when={copiedMessage()}>
-                <div class="copied-message" style={{ color: props.feedbackColor ?? defaultFeedbackColor }}>
-                  Copied!
+                <div class="copied-message" style={{ 'margin-right': '6px', 'font-size': '12px', 'color': props.feedbackColor ?? defaultFeedbackColor }}>
+                  복사완료!
                 </div>
               </Show>
-              {rating() === '' || rating() === 'THUMBS_UP' ? (
-                <ThumbsUpButton feedbackColor={thumbsUpColor()} isDisabled={rating() === 'THUMBS_UP'} rating={rating()} onClick={onThumbsUpClick} />
-              ) : null}
-              {rating() === '' || rating() === 'THUMBS_DOWN' ? (
-                <ThumbsDownButton
-                  feedbackColor={thumbsDownColor()}
-                  isDisabled={rating() === 'THUMBS_DOWN'}
-                  rating={rating()}
-                  onClick={onThumbsDownClick}
-                />
-              ) : null}
-              <Show when={props.message.dateTime}>
+              <ThumbsUpButton feedbackColor={thumbsUpColor()} isDisabled={rating() !== ''} rating={rating()} onClick={onThumbsUpClick} />
+              <ThumbsDownButton feedbackColor={thumbsDownColor()} isDisabled={rating() !== ''} rating={rating()} onClick={onThumbsDownClick} />
+              <Show when={false}>
                 <div class="text-sm text-gray-500 ml-2">
                   {formatDateTime(props.message.dateTime, props?.dateTimeToggle?.date, props?.dateTimeToggle?.time)}
                 </div>
               </Show>
+              <Show when={props.message.menus && Array.isArray(props.message.menus) && props.message.menus.length > 0}>
+                <span style={{ 'margin': '0 6px 4px -2px', 'color': '#CED4DA'}}>|</span>
+                <For each={props.message.menus.slice(0, 5)}>
+                  {(menu, index) => (
+                    <button
+                      disabled={props.isLoading}
+                      class={
+                        'justify-center focus:outline-none flex items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-100 transition-all filter hover:brightness-90 active:brightness-75 mr-2'
+                      }
+                      style={{
+                        'font-size': '11px', 
+                        'height': '24px', 
+                        'border-radius': '4px', 
+                        'border': '1px solid #CED4DA',
+                        'padding': '6px'
+                      }}
+                      title={(props.langCode && menu.menu_names_by_lang?.[props.langCode]?.name)}
+                      onClick={() => {
+                        if (props.observeMenuClick) {
+                          props.observeMenuClick(menu);
+                        }
+                      }}
+                    > 
+                      <img 
+                        src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAD1SURBVHgBzZE/DgFREMZnZjdqN8AJHIEjcAMShQjFokAUCkRhUSCiwQlwA0fgBusGG4mCMOtteGLFnxUFXzPzZvL9Mm8G4NdCmTT0QZCRvbdNZjbK+fS62uz6iMgv62SRWcglV3auyqKFPEO8oyvKQoQ4IXVEjFzByIYIAQfgrGO8qGUWcKdSLhW1Y03vjRAxdtsjcKmLOSzS2McAaWaPJyyGNj4C1PV+W5rL6cR6j1t7eRXXAHGnpTTbz4qmmfvNbi7b6jt/KZuaOCZqDUMAhzFcruB6ic/0NcDxBcuiab3VN19bDo8BjGqU4OgFF1KATfgbnQDU3UrgFaO0lAAAAABJRU5ErkJggg==" 
+                        style={{ 'margin-right': '2px' }}
+                      />
+                      {menu.menuid}
+                    </button>
+                  )}
+                </For>
+              </Show>              
             </div>
             <Show when={showFeedbackContentDialog()}>
               <FeedbackContentDialog

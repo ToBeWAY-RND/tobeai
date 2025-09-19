@@ -1,5 +1,7 @@
 <!--
 chatflowid::
+    MANUAL
+    SEARCH
     gpt-4o-mini : a1b9a25d-81ee-48cd-822b-09ae2bd89725
     gpt-5-nano  : fc142d8d-be62-4565-bdb4-42b3ee258009
 -->
@@ -18,12 +20,12 @@ chatflowid::
     <script type="module">
         import Chatbot from './web.js'
         Chatbot.initFull({
-            chatflowid: 'a1b9a25d-81ee-48cd-822b-09ae2bd89725',    
-            apiHost: 'https://flowise.tobeway.com:3000',
+            chatflowid: 'MANUAL',    
+            apiHost: 'https://aiml.tobeway.com:8443',
             chatflowConfig: {
                 vars: {
                     mdmModule: 'MDM',
-                    aimlUrl:"http://192.168.3.158:8443",
+                    aimlUrl:"https://aiml.tobeway.com:8443",
                     gptModel:"gpt-4o-mini",
                     langCode: "KO",
                     mdmModule: "MDM",
@@ -52,7 +54,7 @@ chatflowid::
                     showAgentMessages: false,
                     title: "토비 AI",
                     welcomeMessage: "안녕하세요 김신모님! 필요한 정보나 궁금한 점이 있다면 말씀해주세요. 함께 해결해드리겠습니다.",
-                    clearChatOnReload: true,
+                    clearChatOnReload: false,
                     starterPrompts: ["MDM 업무규칙?"], 
                     botMessage: {
                         backgroundColor: "#E3F2FD",
@@ -88,7 +90,7 @@ chatflowid::
                     },
                     mdmModules: {
                         label: "모듈",
-                        defaultValue: "META",
+                        defaultValue: "MDM",
                         values: [
                         { value: 'MDM', label: 'MDM' },
                         { value: 'DOM', label: 'DOM' },
@@ -103,7 +105,7 @@ chatflowid::
             observersConfig: {
                 // The bot message stack has changed
                 observeMessages: (messages) => {
-//                    console.log({ messages });
+                    console.log({ messages });
                 },
                 // Source link has clicked
                 observeSourceClick: (source) => {
@@ -111,8 +113,12 @@ chatflowid::
                     if (source && source.metadata) {
                         //alert('PDF Viewer를 띄우겠습니다.' + source.metadata.solution + ' ' + source.metadata.solution + ' page');
                     }
-                    //console.log(source.metadata.solution);
-                }
+                    console.log(source);
+                },
+                // The bot message stack has changed
+                observeMenuClick: (menu) => {
+                    console.log('observeMenuClick', { menu });
+                },
             }         
         })
     </script>

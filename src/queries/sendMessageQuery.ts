@@ -15,6 +15,7 @@ export type IncomingInput = {
 };
 
 type BaseRequest = {
+  aimlHost?: string;
   apiHost?: string;
   onRequest?: (request: RequestInit) => Promise<void>;
 };
@@ -127,6 +128,14 @@ export const sendFileDownloadQuery = ({ apiHost = 'http://localhost:3000', body,
     url: `${apiHost}/api/v1/openai-assistants-file/download`,
     body,
     type: 'blob',
+    onRequest: onRequest,
+  });
+
+export const sendMessageLog = ({ chatflowid,aimlHost = 'http://localhost:8443', body, onRequest }: MessageRequest) =>
+  sendRequest<any>({
+    method: 'POST',
+    url: `${aimlHost}/api/v1/log/${chatflowid}`,
+    body,
     onRequest: onRequest,
   });
 

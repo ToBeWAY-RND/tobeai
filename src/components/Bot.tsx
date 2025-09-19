@@ -539,6 +539,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         langCode: vars?.langCode,
         userId: vars?.userId,
         chatType: vars?.chatType,
+        mdmModule: vars?.mdmModule,
         status,
       };
       await sendMessageLog({

@@ -567,15 +567,23 @@ export const BotBubble = (props: Props) => {
                   복사완료!
                 </div>
               </Show>
-              <ThumbsUpButton feedbackColor={thumbsUpColor()} isDisabled={rating() !== ''} rating={rating()} onClick={onThumbsUpClick} />
-              <ThumbsDownButton feedbackColor={thumbsDownColor()} isDisabled={rating() !== ''} rating={rating()} onClick={onThumbsDownClick} />
-              <Show when={false}>
+              {rating() === '' || rating() === 'THUMBS_UP' ? (
+                <ThumbsUpButton feedbackColor={thumbsUpColor()} isDisabled={rating() === 'THUMBS_UP'} rating={rating()} onClick={onThumbsUpClick} />
+              ) : null}
+              {rating() === '' || rating() === 'THUMBS_DOWN' ? (
+                <ThumbsDownButton
+                  feedbackColor={thumbsDownColor()}
+                  isDisabled={rating() === 'THUMBS_DOWN'}
+                  rating={rating()}
+                  onClick={onThumbsDownClick}
+                />
+              ) : null}
+              <Show when={props.message.dateTime}>
                 <div class="text-sm text-gray-500 ml-2">
                   {formatDateTime(props.message.dateTime, props?.dateTimeToggle?.date, props?.dateTimeToggle?.time)}
                 </div>
               </Show>
               <Show when={props.message.menus && Array.isArray(props.message.menus) && props.message.menus.length > 0}>
-                <span style={{ 'margin': '0 6px 4px -2px', 'color': '#CED4DA'}}>|</span>
                 <For each={props.message.menus.slice(0, 5)}>
                   {(menu, index) => (
                     <button

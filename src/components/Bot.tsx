@@ -1863,7 +1863,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                       (botProps.chatflowConfig.vars as any).gptModel = value;
                     }
                   }}
-                  style={{ width: '200px' }}
+                  style={{ width: 'auto' }}
                 />
               </div>
               {

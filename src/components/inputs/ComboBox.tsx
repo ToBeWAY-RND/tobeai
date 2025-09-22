@@ -32,6 +32,8 @@ export const ComboBox = (props: Props) => {
   const [isOpen, setIsOpen] = createSignal(false);
   const [selectedValue, setSelectedValue] = createSignal(props.value || '');
   const [searchTerm, setSearchTerm] = createSignal('');
+  let triggerRef: HTMLDivElement | undefined;
+  const [dropdownMinWidth, setDropdownMinWidth] = createSignal<number>(0);
 
   // 초기값 설정 로직
   createEffect(() => {
@@ -110,9 +112,39 @@ export const ComboBox = (props: Props) => {
   // 드롭다운 토글
   const toggleDropdown = () => {
     if (props.disabled) return;
-    setIsOpen(!isOpen());
-    if (!isOpen()) {
+    const next = !isOpen();
+    setIsOpen(next);
+    if (next) {
+      // opening
       setSearchTerm('');
+      queueMicrotask(() => recalcDropdownWidth());
+    }
+  };
+
+  const recalcDropdownWidth = () => {
+    try {
+      if (!triggerRef) return;
+      const cs = getComputedStyle(triggerRef);
+      // Build a font string for canvas measurement
+      const fontWeight = cs.fontWeight || '400';
+      const fontSize = cs.fontSize || '12px';
+      const fontFamily = cs.fontFamily || 'sans-serif';
+      const font = `${fontWeight} ${fontSize} ${fontFamily}`;
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.font = font;
+      let max = 0;
+      for (const opt of props.options) {
+        const w = ctx.measureText(opt.label).width;
+        if (w > max) max = w;
+      }
+      // Padding: left+right px-2 = ~16px, icon + gap ~24px
+      const extras = 16 + 24;
+      const minWidth = Math.ceil(max + extras);
+      setDropdownMinWidth(minWidth);
+    } catch (e) {
+      // fail silently
     }
   };
 
@@ -154,7 +186,7 @@ export const ComboBox = (props: Props) => {
         {/* 메인 입력 필드 */}
         <div
           class={`
-            flex items-center justify-between w-full px-2  
+            inline-flex items-center justify-between w-auto px-2  
             border border-gray-300 rounded-md cursor-pointer
             ${props.disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white hover:border-gray-400'}
             ${isOpen() ? 'border-blue-500 ring-2 ring-blue-200' : ''}
@@ -166,8 +198,9 @@ export const ComboBox = (props: Props) => {
           role="combobox"
           aria-expanded={isOpen()}
           aria-haspopup="listbox"
+          ref={(el) => (triggerRef = el as HTMLDivElement)}
         >
-          <span class={`truncate ${selectedValue() ? 'text-gray-900' : 'text-gray-500'}`} style={{ 'font-size': '12px' }}>
+          <span class={`${selectedValue() ? 'text-gray-900' : 'text-gray-500'}`} style={{ 'font-size': '12px', 'white-space': 'nowrap' }}>
             {getSelectedLabel()}
           </span>
           <ChevronDownIcon class={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isOpen() ? 'rotate-180' : ''}`} />
@@ -176,7 +209,7 @@ export const ComboBox = (props: Props) => {
 
       {/* 드롭다운 메뉴 */}
       <Show when={isOpen()}>
-        <div class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden">
+        <div class="absolute z-50 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden" style={{ 'min-width': `${dropdownMinWidth()}px`, width: 'auto' }}>
           {/* 검색 입력 필드 */}
           <div class="p-2 border-b border-gray-200" style={{ display: 'none' }}>
             <input

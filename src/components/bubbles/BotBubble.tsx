@@ -38,8 +38,6 @@ type Props = {
   handleSourceDocumentsClick: (src: any) => void;
   observeSourceClick?: (messages: any) => void;
   observeMenuClick?: (messages: any) => void;
-  setSourceClick?: (updater: any[] | ((prev: any[]) => any[])) => void;
-  setMenuClick?: (updater: any[] | ((prev: any[]) => any[])) => void;
   langCode?: string;
 };
 
@@ -538,15 +536,10 @@ export const BotBubble = (props: Props) => {
                         if (URL) {
                           window.open(src.metadata.source, '_blank');
                         } else {
-                          //props.handleSourceDocumentsClick(src); // 원래 있던 코드.
-                          // observeSourceClick 이벤트 발생 시 호출
+                          // props.handleSourceDocumentsClick(src);
                           if (props.observeSourceClick) {
                             props.observeSourceClick(src);
                           }
-                          // sourceClickEvents signal 업데이트
-                          //if (props.setSourceClick) {
-                          //  props.setSourceClick(prev => [...prev, src]);
-                          //}
                         }
                       }}
                     />
@@ -609,7 +602,7 @@ export const BotBubble = (props: Props) => {
                         src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAD1SURBVHgBzZE/DgFREMZnZjdqN8AJHIEjcAMShQjFokAUCkRhUSCiwQlwA0fgBusGG4mCMOtteGLFnxUFXzPzZvL9Mm8G4NdCmTT0QZCRvbdNZjbK+fS62uz6iMgv62SRWcglV3auyqKFPEO8oyvKQoQ4IXVEjFzByIYIAQfgrGO8qGUWcKdSLhW1Y03vjRAxdtsjcKmLOSzS2McAaWaPJyyGNj4C1PV+W5rL6cR6j1t7eRXXAHGnpTTbz4qmmfvNbi7b6jt/KZuaOCZqDUMAhzFcruB6ic/0NcDxBcuiab3VN19bDo8BjGqU4OgFF1KATfgbnQDU3UrgFaO0lAAAAABJRU5ErkJggg==" 
                         style={{ 'margin-right': '2px' }}
                       />
-                      {(typeof menu.menu_alias === 'string' && menu.menu_alias.trim() !== '') ? menu.menu_alias : menu.menuid}
+                      {(typeof menu.menu_alias === 'string' && menu.menu_alias.trim() !== '') ? `${menu.menu_alias} (${menu.menuid})` : menu.menuid}
                     </button>
                   )}
                 </For>

@@ -395,8 +395,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
   const [loading, setLoading] = createSignal(false);
   const [sourcePopupOpen, setSourcePopupOpen] = createSignal(false);
   const [sourcePopupSrc, setSourcePopupSrc] = createSignal({});
-  const [sourceClick, setSourceClick] = createSignal<any[]>([]);
-  const [menuClick, setMenuClick] = createSignal<any[]>([]);
   const [messages, setMessages] = createSignal<MessageType[]>(
     [
       {
@@ -472,16 +470,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         // eslint-disable-next-line solid/reactivity
         createMemo(() => {
           observeMessages(messages());
-        });
-      typeof observeSourceClick === 'function' &&
-        // eslint-disable-next-line solid/reactivity
-        createMemo(() => {
-          observeSourceClick(sourceClick());
-        });
-      typeof observeMenuClick === 'function' &&
-        // eslint-disable-next-line solid/reactivity
-        createMemo(() => {
-          observeMenuClick(menuClick());
         });
     }
 
@@ -1875,7 +1863,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                       (botProps.chatflowConfig.vars as any).gptModel = value;
                     }
                   }}
-                  style={{ width: '120px' }}
+                  style={{ width: '200px' }}
                 />
               </div>
               {
@@ -1961,8 +1949,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                           dateTimeToggle={props.dateTimeToggle}
                           renderHTML={props.renderHTML}
                           observeSourceClick={botProps.observersConfig?.observeSourceClick}
-                          setSourceClick={setSourceClick}
-                          setMenuClick={setMenuClick}
                           observeMenuClick={botProps.observersConfig?.observeMenuClick}
                           langCode={(botProps.chatflowConfig?.vars as any).langCode}
                         />

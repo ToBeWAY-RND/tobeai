@@ -36,8 +36,9 @@ type Props = {
   renderHTML?: boolean;
   handleActionClick: (elem: any, action: IAction | undefined | null) => void;
   handleSourceDocumentsClick: (src: any) => void;
-  observeSourceClick?: (messages: any) => void;
-  observeMenuClick?: (messages: any) => void;
+  observeSourceClick?: (sourceDocuments: any) => void;
+  observeMenuClick?: (menu: any) => void;
+  observeMastClick?: (mastid: any) => void;
   langCode?: string;
 };
 
@@ -319,7 +320,7 @@ export const BotBubble = (props: Props) => {
           <div class="flex items-center justify-center p-0 m-0">
             <img
               class="w-full h-full bg-cover"
-              src={(() => {
+              src={((): string => {
                 const isFileStorage = typeof item.data === 'string' && item.data.startsWith('FILE-STORAGE::');
                 return isFileStorage
                   ? `${props.apiHost}/api/v1/get-upload-file?chatflowId=${props.chatflowid}&chatId=${props.chatId}&fileName=${(
@@ -585,7 +586,7 @@ export const BotBubble = (props: Props) => {
                         'justify-center focus:outline-none flex items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-100 transition-all filter hover:brightness-90 active:brightness-75 mr-2'
                       }
                       style={{
-                        'font-size': '11px', 
+                        'font-size': '11px',
                         'height': '24px', 
                         'border-radius': '4px', 
                         'border': '1px solid #CED4DA',
@@ -606,7 +607,43 @@ export const BotBubble = (props: Props) => {
                     </button>
                   )}
                 </For>
-              </Show>              
+              </Show>
+              <Show when={
+                  props.message.mastSearches
+                  && Array.isArray(props.message.mastSearches)
+                  && props.message.mastSearches.length > 0
+                  && props.message.mastSearches[props.message.mastSearches.length - 1].mastids
+                  && props.message.mastSearches[props.message.mastSearches.length - 1].mastids.length > 0
+              }>
+                <For each={props.message.mastSearches[props.message.mastSearches.length - 1].mastids}>
+                  {(mastid, index) => (
+                    <button
+                      disabled={props.isLoading}
+                      class={
+                        'justify-center focus:outline-none flex items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-100 transition-all filter hover:brightness-90 active:brightness-75 mr-2'
+                      }
+                      style={{
+                        'font-size': '11px',
+                        'height': '24px',
+                        'border-radius': '4px',
+                        'border': '1px solid #CED4DA',
+                        'padding': '6px'
+                      }}
+                      onClick={() => {
+                        if (props.observeMastClick) {
+                          props.observeMastClick(mastid);
+                        }
+                      }}
+                    >
+                      <img
+                        src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAD1SURBVHgBzZE/DgFREMZnZjdqN8AJHIEjcAMShQjFokAUCkRhUSCiwQlwA0fgBusGG4mCMOtteGLFnxUFXzPzZvL9Mm8G4NdCmTT0QZCRvbdNZjbK+fS62uz6iMgv62SRWcglV3auyqKFPEO8oyvKQoQ4IXVEjFzByIYIAQfgrGO8qGUWcKdSLhW1Y03vjRAxdtsjcKmLOSzS2McAaWaPJyyGNj4C1PV+W5rL6cR6j1t7eRXXAHGnpTTbz4qmmfvNbi7b6jt/KZuaOCZqDUMAhzFcruB6ic/0NcDxBcuiab3VN19bDo8BjGqU4OgFF1KATfgbnQDU3UrgFaO0lAAAAABJRU5ErkJggg=="
+                        style={{ 'margin-right': '2px' }}
+                      />
+                      { mastid }
+                    </button>
+                  )}
+                </For>
+              </Show>
             </div>
             <Show when={showFeedbackContentDialog()}>
               <FeedbackContentDialog

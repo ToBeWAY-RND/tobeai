@@ -141,7 +141,7 @@ type IUploads = {
 }[];
 
 type observerConfigType = (accessor: string | boolean | object | MessageType[]) => void;
-export type observersConfigType = Record<'observeUserInput' | 'observeLoading' | 'observeMessages' | 'observeSourceClick' | 'observeMenuClick', observerConfigType>;
+export type observersConfigType = Record<'observeUserInput' | 'observeLoading' | 'observeMessages' | 'observeSourceClick' | 'observeMenuClick' | 'observeMastClick', observerConfigType>;
 
 export type BotProps = {
   chatflowid: string;
@@ -455,7 +455,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
   onMount(() => {
     if (botProps?.observersConfig) {
-      const { observeUserInput, observeLoading, observeMessages, observeSourceClick, observeMenuClick } = botProps.observersConfig;
+      const { observeUserInput, observeLoading, observeMessages } = botProps.observersConfig;
       typeof observeUserInput === 'function' &&
         // eslint-disable-next-line solid/reactivity
         createMemo(() => {
@@ -1950,6 +1950,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                           renderHTML={props.renderHTML}
                           observeSourceClick={botProps.observersConfig?.observeSourceClick}
                           observeMenuClick={botProps.observersConfig?.observeMenuClick}
+                          observeMastClick={botProps.observersConfig?.observeMastClick}
                           langCode={(botProps.chatflowConfig?.vars as any).langCode}
                         />
                       )}

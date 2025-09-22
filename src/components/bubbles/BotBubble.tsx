@@ -603,7 +603,7 @@ export const BotBubble = (props: Props) => {
                         src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAD1SURBVHgBzZE/DgFREMZnZjdqN8AJHIEjcAMShQjFokAUCkRhUSCiwQlwA0fgBusGG4mCMOtteGLFnxUFXzPzZvL9Mm8G4NdCmTT0QZCRvbdNZjbK+fS62uz6iMgv62SRWcglV3auyqKFPEO8oyvKQoQ4IXVEjFzByIYIAQfgrGO8qGUWcKdSLhW1Y03vjRAxdtsjcKmLOSzS2McAaWaPJyyGNj4C1PV+W5rL6cR6j1t7eRXXAHGnpTTbz4qmmfvNbi7b6jt/KZuaOCZqDUMAhzFcruB6ic/0NcDxBcuiab3VN19bDo8BjGqU4OgFF1KATfgbnQDU3UrgFaO0lAAAAABJRU5ErkJggg==" 
                         style={{ 'margin-right': '2px' }}
                       />
-                      {(typeof menu.menu_alias === 'string' && menu.menu_alias.trim() !== '') ? `${menu.menu_alias} (${menu.menuid})` : menu.menuid}
+                      {(typeof menu.menu_alias === 'string' && menu.menu_alias.trim() !== '' && menu.menu_alias !== menu.menuid) ? `${menu.menu_alias} (${menu.menuid})` : menu.menuid}
                     </button>
                   )}
                 </For>

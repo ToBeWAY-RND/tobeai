@@ -576,6 +576,8 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
   let hasSoundPlayed = false;
 
+    const [calledTools, setCalledTools] = createSignal<any[]>([]);
+
 
   const updateLastMessage = (text: string) => {
     setMessages((prevMessages) => {
@@ -626,6 +628,12 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     });
   };
 
+  const updateLoadingCalledTools = (calledTools: any[]) => {
+    setCalledTools(Array.isArray(calledTools) ? calledTools : []);
+  };
+
+
+
   const updateLastMessageMenus = (menus: any[]) => {
     setMessages((prevMessages) => {
       const allMessages = [...cloneDeep(prevMessages)];
@@ -671,6 +679,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
   const updateAgentFlowEvent = (event: string) => {
     if (event === 'INPROGRESS') {
+      setCalledTools([]);
       setMessages((prevMessages) => [...prevMessages, { message: '', type: 'apiMessage', agentFlowEventStatus: event, sourceDocuments: [] }]);
     } else {
       setMessages((prevMessages) => {
@@ -827,6 +836,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         const payload = JSON.parse(ev.data);
         switch (payload.event) {
           case 'start':
+            setCalledTools([]);
             setMessages((prevMessages) => [...prevMessages, { message: '', type: 'apiMessage', sourceDocuments: [] }]);
             break;
           case 'token':
@@ -837,6 +847,9 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
             break;
           case 'usedTools':
             updateLastMessageUsedTools(payload.data);
+            break;
+          case 'calledTools':
+            updateLoadingCalledTools(payload.data);
             break;
           case 'menus':
             updateLastMessageMenus(payload.data);
@@ -868,6 +881,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           case 'error':
             updateErrorMessage(payload.data);
             await logMessageCompletion('error', input);
+            setCalledTools([]);
             break;
           case 'abort':
             abortMessage();
@@ -888,6 +902,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
               return allMessages;
             });
             await logMessageCompletion('success', input);
+            setCalledTools([]);
             closeResponse();
             break;
         }
@@ -909,6 +924,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     setUserInput('');
     setUploadedFiles([]);
     hasSoundPlayed = false;
+    setCalledTools([]);
     
     // Force BotBubble refresh by updating the last message
     setMessages((prevMessages) => {
@@ -1037,6 +1053,8 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     }
 
     setLoading(true);
+    // reset called tools indicators for new streaming response
+    setCalledTools([]);
     scrollToBottom();
 
     let uploads: IUploads = previews().map((item) => {
@@ -1972,8 +1990,8 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                           setLeadEmail={setLeadEmail}
                         />
                       )}
-                      {message.type === 'userMessage' && loading() && index() === messages().length - 1 && <LoadingBubble />}
-                      {message.type === 'apiMessage' && message.message === '' && loading() && index() === messages().length - 1 && <LoadingBubble />}
+                      {message.type === 'userMessage' && loading() && index() === messages().length - 1 && <LoadingBubble calledTools={calledTools()} />}
+                      {message.type === 'apiMessage' && message.message === '' && loading() && index() === messages().length - 1 && <LoadingBubble calledTools={calledTools()} />}
                     </>
                   );
                 }}

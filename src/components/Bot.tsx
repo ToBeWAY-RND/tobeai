@@ -1954,6 +1954,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                           avatarLoadingSrc={props.botMessage?.avatarLoadingSrc}
                           avatarInfoSrc={props.botMessage?.avatarInfoSrc}
                           avatarEmptySrc={props.botMessage?.avatarEmptySrc}
+                          clipboardSrc={props.botMessage?.clipboardSrc}
                           chatFeedbackStatus={chatFeedbackStatus()}
                           fontSize={props.fontSize}
                           isLoading={loading() && index() === messages().length - 1}

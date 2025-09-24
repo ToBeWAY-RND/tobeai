@@ -254,20 +254,21 @@ export const BotBubble = (props: Props) => {
   };
 
   const submitFeedbackContent = async (text: string) => {
-    const body = {
-      content: text,
-    };
-    const result = await updateFeedbackQuery({
-      id: feedbackId(),
-      apiHost: props.apiHost,
-      body,
-      onRequest: props.onRequest,
-    });
+    if (text != '') {
+      const body = {
+        content: text,
+      };
 
-    if (result.data) {
-      setFeedbackId('');
-      setShowFeedbackContentModal(false);
+      await updateFeedbackQuery({
+        id: feedbackId(),
+        apiHost: props.apiHost,
+        body,
+        onRequest: props.onRequest,
+      });
     }
+    setFeedbackId('');
+    setShowFeedbackContentModal(false);
+
   };
 
   onMount(() => {

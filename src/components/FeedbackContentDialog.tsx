@@ -17,7 +17,7 @@ const FeedbackContentDialog = (props: FeedbackContentDialogProps) => {
 
   const handleInput = (value: string) => setInputValue(value);
 
-  const checkIfInputIsValid = () => inputValue() !== '' && inputRef?.reportValidity();
+  const checkIfInputIsValid = () => inputRef?.reportValidity();
 
   const submit = () => {
     if (checkIfInputIsValid()) props.onSubmit(inputValue());

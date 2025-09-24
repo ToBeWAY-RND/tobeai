@@ -46,7 +46,6 @@ export type BotMessageTheme = {
   avatarLoadingSrc?: string;  
   avatarInfoSrc?: string;
   avatarEmptySrc?: string;
-  clipboardSrc?: string;
 };
 
 export type FooterTheme = {

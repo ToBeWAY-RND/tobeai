@@ -23,7 +23,6 @@ type Props = {
   avatarLoadingSrc?: string;
   avatarInfoSrc?: string;
   avatarEmptySrc?: string;
-  clipboardSrc?: string;
   backgroundColor?: string;
   backgroundColorEmphasize?: string;
   textColor?: string;
@@ -556,18 +555,7 @@ export const BotBubble = (props: Props) => {
         {props.chatFeedbackStatus && props.message.messageId && (
           <>
             <div class={`flex items-center px-2 pb-2 ${props.showAvatar ? 'ml-10' : ''}`}>
-              {props.clipboardSrc ? (
-                <img
-                  src={props.clipboardSrc}
-                  alt=""
-                  style={{ background: 'transparent', border: 'none' }}
-                  title="클립보드로 복사"
-                  class="cursor-pointer mr-2 h-4 w-4"
-                  onClick={() => copyMessageToClipboard()}
-                />
-              ) : (
-                <CopyToClipboardButton feedbackColor={props.feedbackColor} onClick={() => copyMessageToClipboard()} />
-              )}
+              <CopyToClipboardButton feedbackColor={props.feedbackColor} onClick={() => copyMessageToClipboard()} />
               <Show when={copiedMessage()}>
                 <div class="copied-message" style={{ 'margin-right': '6px', 'font-size': '12px', 'color': props.feedbackColor ?? defaultFeedbackColor }}>
                   복사완료!

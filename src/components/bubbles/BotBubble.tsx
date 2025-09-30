@@ -590,7 +590,7 @@ export const BotBubble = (props: Props) => {
                         'font-size': '11px',
                         'height': '24px', 
                         'border-radius': '4px', 
-                        'border': '1px solid #CED4DA',
+                        'border': 'none', // '1px solid #CED4DA',
                         'padding': '6px'
                       }}
                       title={(props.langCode && menu.menu_names_by_lang?.[props.langCode]?.name)}
@@ -627,7 +627,7 @@ export const BotBubble = (props: Props) => {
                         'font-size': '11px',
                         'height': '24px',
                         'border-radius': '4px',
-                        'border': '1px solid #CED4DA',
+                        'border': 'none', // '1px solid #CED4DA',
                         'padding': '6px'
                       }}
                       onClick={() => {

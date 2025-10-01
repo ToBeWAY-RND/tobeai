@@ -117,6 +117,7 @@ export type MessageType = {
   sourceDocuments?: any;
   menus?: any;
   mastSearches?: any;
+  thoughts?: any;
   fileAnnotations?: any;
   fileUploads?: Partial<FileUpload>[];
   artifacts?: Partial<FileUpload>[];
@@ -528,6 +529,8 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         userId: vars?.userId,
         chatType: vars?.chatType,
         mdmModule: vars?.mdmModule,
+        thoughts: msg?.thoughts,
+        menuId: vars?.menuId,
         status,
       };
       await sendMessageLog({
@@ -584,9 +587,36 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       const allMessages = [...cloneDeep(prevMessages)];
       if (allMessages[allMessages.length - 1].type === 'userMessage') return allMessages;
       if (!text) return allMessages;
-      allMessages[allMessages.length - 1].message += text;
-      allMessages[allMessages.length - 1].rating = undefined;
-      allMessages[allMessages.length - 1].dateTime = new Date().toISOString();
+
+      const last = allMessages[allMessages.length - 1] as any;
+      last.message = (last.message || '') + text;
+
+      if (last.type === 'apiMessage') {
+        const re = /<(think|thinking)>([\s\S]*?)<\/\1>/g;
+        let changed = false;
+        let match: RegExpExecArray | null;
+        const matches: { full: string; inner: string }[] = [];
+        while ((match = re.exec(last.message)) !== null) {
+          matches.push({ full: match[0], inner: match[2] });
+        }
+        if (matches.length) {
+          if (!Array.isArray(last.thoughts)) last.thoughts = [];
+          matches.forEach((m) => {
+            const content = m.inner;
+            if (content && content.length) last.thoughts.push(content);
+            last.message = last.message.replace(m.full, '').trim();
+            changed = true;
+          });
+        }
+        if (changed && (!last.message || last.message.trim().length === 0)) {
+          setLoading(true);
+        }
+
+      }
+
+
+      last.rating = undefined;
+      last.dateTime = new Date().toISOString();
       if (!hasSoundPlayed) {
         playReceiveSound();
         hasSoundPlayed = true;
@@ -638,7 +668,66 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     setMessages((prevMessages) => {
       const allMessages = [...cloneDeep(prevMessages)];
       if (allMessages[allMessages.length - 1].type === 'userMessage') return allMessages;
-      allMessages[allMessages.length - 1].menus = menus;
+
+      try {
+        const lastMsg = allMessages[allMessages.length - 1];
+        const text: string = (lastMsg?.message ?? '').toString();
+        const textLower = text.toLowerCase();
+
+        // Helper to find the earliest mention index of menuid or menu_alias
+        const getMentionIndex = (menu: any): number => {
+          if (!menu) return -1;
+          const candidates: string[] = [];
+          if (typeof menu.menuid === 'string' && menu.menuid.trim() !== '') candidates.push(menu.menuid);
+          if (typeof menu.menu_alias === 'string' && menu.menu_alias.trim() !== '') candidates.push(menu.menu_alias);
+
+          let best = -1;
+          for (const raw of candidates) {
+            const token = String(raw).trim();
+            if (!token) continue;
+            // Case-insensitive search; prefer word-boundary match when possible
+            const tokenLower = token.toLowerCase();
+
+            // Try exact word boundary match first
+            // Build a simple regex escaping special characters
+            const escaped = tokenLower.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+            const wordBoundaryRegex = new RegExp(`(^|[^a-z0-9_])(${escaped})(?=$|[^a-z0-9_])`, 'i');
+            const boundaryMatch = text.match(wordBoundaryRegex);
+            if (boundaryMatch && typeof boundaryMatch.index === 'number') {
+              const idx = boundaryMatch.index + (boundaryMatch[1] ? boundaryMatch[1].length : 0);
+              best = best === -1 ? idx : Math.min(best, idx);
+              continue;
+            }
+
+            // Fallback: substring search
+            const idx2 = textLower.indexOf(tokenLower);
+            if (idx2 !== -1) {
+              best = best === -1 ? idx2 : Math.min(best, idx2);
+            }
+          }
+          return best;
+        };
+
+        // Stable sort: compute mention index and then order
+        const withKeys = (Array.isArray(menus) ? menus : []).map((m, i) => ({ m, i, mi: getMentionIndex(m) }));
+        withKeys.sort((a, b) => {
+          const aMentioned = a.mi !== -1;
+          const bMentioned = b.mi !== -1;
+          if (aMentioned && bMentioned) {
+            // Earlier appearance in text first; tie-break by original index to keep stable
+            if (a.mi !== b.mi) return a.mi - b.mi;
+            return a.i - b.i;
+          }
+          if (aMentioned) return -1;
+          if (bMentioned) return 1;
+          return a.i - b.i; // preserve original order for non-mentioned
+        });
+        allMessages[allMessages.length - 1].menus = withKeys.map((x) => x.m);
+      } catch (e) {
+        // Fallback to original order on any error
+        allMessages[allMessages.length - 1].menus = menus;
+      }
+
       addChatMessage(allMessages);
       return allMessages;
     });
@@ -1340,6 +1429,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                 dateTime: message.dateTime,
               };
               if (message.menus) chatHistory.menus = message.menus;
+              if (message.thoughts) chatHistory.thoughts = message.thoughts;
               if (message.mastSearches) chatHistory.mastSearches = message.mastSearches;
               if (message.sourceDocuments) chatHistory.sourceDocuments = message.sourceDocuments;
               if (message.fileAnnotations) chatHistory.fileAnnotations = message.fileAnnotations;
@@ -1938,7 +2028,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                           renderHTML={props.renderHTML}
                         />
                       )}
-                      {message.type === 'apiMessage' && (
+                      {message.type === 'apiMessage' && message.message.trim() !== '' && (
                         <BotBubble
                           message={message}
                           fileAnnotations={message.fileAnnotations}
@@ -1990,8 +2080,22 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                           setLeadEmail={setLeadEmail}
                         />
                       )}
-                      {message.type === 'userMessage' && loading() && index() === messages().length - 1 && <LoadingBubble calledTools={calledTools()} />}
-                      {message.type === 'apiMessage' && message.message === '' && loading() && index() === messages().length - 1 && <LoadingBubble calledTools={calledTools()} />}
+                      {message.type === 'userMessage' && loading() && index() === messages().length - 1 && (
+                        <LoadingBubble
+                          calledTools={calledTools()}
+                          showAvatar={props.botMessage?.showAvatar}
+                          avatarLoadingSrc={props.botMessage?.avatarLoadingSrc}
+                          avatarSrc={props.botMessage?.avatarSrc}
+                        />
+                      )}
+                      {message.type === 'apiMessage' && message.message.trim() === '' && loading() && index() === messages().length - 1 && (
+                        <LoadingBubble
+                          calledTools={calledTools()}
+                          showAvatar={props.botMessage?.showAvatar}
+                          avatarLoadingSrc={props.botMessage?.avatarLoadingSrc}
+                          avatarSrc={props.botMessage?.avatarSrc}
+                        />
+                      )}
                     </>
                   );
                 }}

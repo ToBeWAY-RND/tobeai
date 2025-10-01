@@ -472,7 +472,10 @@ export const BotBubble = (props: Props) => {
               data-testid="host-bubble"
               style={{
                 'background-color':
-                  props.message.sourceDocuments && props.message.sourceDocuments.length > 0
+                  (
+                    (props.message.sourceDocuments && props.message.sourceDocuments.length > 0)
+                    || (props.message.mastSearches && props.message.mastSearches.length > 0)
+                  )
                     ? props.backgroundColorEmphasize ?? defaultBackgroundColor
                     : props.backgroundColor ?? defaultBackgroundColor,
                 color: props.textColor ?? defaultTextColor,

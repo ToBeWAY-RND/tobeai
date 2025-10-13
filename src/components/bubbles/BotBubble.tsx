@@ -48,6 +48,9 @@ const defaultFontSize = 16;
 const defaultFeedbackColor = '#3B81F6';
 
 export const BotBubble = (props: Props) => {
+  const [orderedSources, setOrderedSources] = createSignal<any[]>([]);
+  const [orderedMenus, setOrderedMenus] = createSignal<any[]>([]);
+  const [orderedMastIds, setOrderedMastIds] = createSignal<string[]>([]);
   let botDetailsEl: HTMLDetailsElement | undefined;
 
   Marked.setOptions({ isNoP: true, sanitize: props.renderHTML !== undefined ? !props.renderHTML : true });
@@ -86,10 +89,198 @@ export const BotBubble = (props: Props) => {
         (element as HTMLElement).style.color = '#4CAF50'; // Green color
       });
 
-      // Set target="_blank" for links
+      let prevMenus: any[] = [];
+      let prevDocs: any[] = [];
+      let prevMastSearches: any[] = [];
+      try {
+        const chatDetails = localStorage.getItem(`${props.chatflowid}_EXTERNAL`);
+        if (chatDetails) {
+          const parsedDetails = JSON.parse(chatDetails);
+          const history: MessageType[] = parsedDetails.chatHistory || [];
+          const currentIdx = history.findIndex((m: MessageType) => m.messageId === props.message.messageId);
+          const prev = currentIdx >= 0 ? history.slice(0, currentIdx) : history;
+          for (const msg of prev) {
+            if (Array.isArray(msg.menus)) prevMenus = prevMenus.concat(msg.menus);
+            if (Array.isArray(msg.sourceDocuments)) prevDocs = prevDocs.concat(msg.sourceDocuments);
+            if (Array.isArray(msg.mastSearches)) prevMastSearches = prevMastSearches.concat(msg.mastSearches);
+          }
+        }
+      } catch (e) {
+        // ignore parsing errors
+      }
+
+      const currentDocs = Array.isArray(props.message.sourceDocuments) ? props.message.sourceDocuments : [];
+
+      const orderedCurrentSources: any[] = [];
+      const orderedCurrentMenus: any[] = [];
+      const orderedCurrentMastIds: string[] = [];
+      let currentDocCounter = 0;
+
       el.querySelectorAll('a').forEach((link) => {
-        link.target = '_blank';
+        let href = link.getAttribute('href') || '';
+
+        let invalid_link = true;
+        if (href.startsWith('menu:')) {
+          const key = href.substring('menu:'.length).trim();
+          const menus = Array.isArray(props.message.menus) ? props.message.menus : [];
+          let matched = menus.find((m: any) => m?.menuid === key || m?.menu_alias === key);
+          const matchedFromCurrent = matched;
+          if (!matched && Array.isArray(prevMenus) && prevMenus.length > 0) {
+            matched = prevMenus.find((m: any) => m?.menuid === key || m?.menu_alias === key);
+          }
+
+          if (matched) {
+            link.addEventListener('click', (e) => {
+              e.preventDefault();
+              if (!props.isLoading && props.observeMenuClick) {
+                props.observeMenuClick(matched);
+              }
+            });
+
+            link.setAttribute('role', 'button');
+            link.style.cursor = props.isLoading ? 'not-allowed' : 'pointer';
+            link.style.color = props.textColor ?? defaultTextColor;
+            link.style.textDecoration = 'underline';
+            link.title = matched.menu_alias !== '' ? matched.menu_alias : matched.menuid;
+
+            const img = document.createElement('img');
+            img.dataset.menuIcon = '1';
+            img.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAD1SURBVHgBzZE/DgFREMZnZjdqN8AJHIEjcAMShQjFokAUCkRhUSCiwQlwA0fgBusGG4mCMOtteGLFnxUFXzPzZvL9Mm8G4NdCmTT0QZCRvbdNZjbK+fS62uz6iMgv62SRWcglV3auyqKFPEO8oyvKQoQ4IXVEjFzByIYIAQfgrGO8qGUWcKdSLhW1Y03vjRAxdtsjcKmLOSzS2McAaWaPJyyGNj4C1PV+W5rL6cR6j1t7eRXXAHGnpTTbz4qmmfvNbi7b6jt/KZuaOCZqDUMAhzFcruB6ic/0NcDxBcuiab3VN19bDo8BjGqU4OgFF1KATfgbnQDU3UrgFaO0lAAAAABJRU5ErkJggg==';
+            img.alt = '';
+            img.setAttribute('aria-hidden', 'true');
+
+            img.style.display = 'inline-block';
+            img.style.width = '1em';
+            img.style.height = '1em';
+            img.style.padding = '0';
+            img.style.margin = '0';
+            img.style.marginRight = '0.25em';
+            (img.style as any).verticalAlign = 'text-bottom';
+            img.style.lineHeight = '1';
+            link.insertBefore(img, link.firstChild);
+            invalid_link = false;
+            if (matchedFromCurrent) {
+              orderedCurrentMenus.push(matchedFromCurrent);
+            }
+          }
+        } else if (href.startsWith('document:')) {
+          const key = href.substring('document:'.length).trim();
+          const idxCurrent = currentDocs.findIndex((m: any) => m?.documentId === key);
+
+          if (idxCurrent !== -1) {
+            const doc = currentDocs[idxCurrent];
+            link.addEventListener('click', (e) => {
+              e.preventDefault();
+              if (!props.isLoading && props.observeSourceClick) {
+                props.observeSourceClick(doc);
+              }
+            });
+
+            link.setAttribute('role', 'button');
+            currentDocCounter += 1;
+            link.textContent = currentDocCounter.toString();
+            link.style.cursor = props.isLoading ? 'not-allowed' : 'pointer';
+            // Style as a small grey circular badge
+            link.style.display = 'inline-flex';
+            ;(link.style as any).alignItems = 'center';
+            ;(link.style as any).justifyContent = 'center';
+            link.style.width = '16px';
+            link.style.height = '16px';
+            link.style.borderRadius = '9999px';
+            link.style.backgroundColor = '#E0E0E0';
+            link.style.color = '#333333';
+            link.style.fontSize = '11px';
+            link.style.fontWeight = '600';
+            link.style.textDecoration = 'none';
+            ;(link.style as any).lineHeight = '16px';
+            invalid_link = false;
+            orderedCurrentSources.push(doc);
+          } else {
+            const prevDoc = Array.isArray(prevDocs) ? prevDocs.find((m: any) => m?.documentId === key) : undefined;
+            if (prevDoc) {
+              link.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (!props.isLoading && props.observeSourceClick) {
+                  props.observeSourceClick(prevDoc);
+                }
+              });
+              link.setAttribute('role', 'button');
+              link.textContent = '*';
+              link.style.cursor = props.isLoading ? 'not-allowed' : 'pointer';
+              invalid_link = false;
+            } else {
+              link.textContent = '';
+              href = '';
+            }
+          }
+        } else if (href.startsWith('master:')) {
+          const key = href.substring('master:'.length).trim();
+          const searches = Array.isArray(props.message.mastSearches) ? props.message.mastSearches : [];
+
+          let matched: string | null = null;
+          const scanMast = (list: any[]) => {
+            for (const search of list) {
+              for (const m of search.mastids || []) {
+                if (m === key) {
+                  return m;
+                }
+              }
+            }
+            return null;
+          };
+          const matchedFromCurrent = scanMast(searches);
+          matched = matchedFromCurrent;
+          if (matched === null && Array.isArray(prevMastSearches) && prevMastSearches.length > 0) {
+            matched = scanMast(prevMastSearches);
+          }
+
+          if (matched !== null) {
+            link.addEventListener('click', (e) => {
+              e.preventDefault();
+              if (!props.isLoading && props.observeMastClick) {
+                props.observeMastClick(matched);
+              }
+            });
+
+            link.setAttribute('role', 'button');
+            link.style.cursor = props.isLoading ? 'not-allowed' : 'pointer';
+            link.style.color = props.textColor ?? defaultTextColor;
+            link.style.textDecoration = 'underline';
+
+            const img = document.createElement('img');
+            img.dataset.menuIcon = '1';
+            img.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAD1SURBVHgBzZE/DgFREMZnZjdqN8AJHIEjcAMShQjFokAUCkRhUSCiwQlwA0fgBusGG4mCMOtteGLFnxUFXzPzZvL9Mm8G4NdCmTT0QZCRvbdNZjbK+fS62uz6iMgv62SRWcglV3auyqKFPEO8oyvKQoQ4IXVEjFzByIYIAQfgrGO8qGUWcKdSLhW1Y03vjRAxdtsjcKmLOSzS2McAaWaPJyyGNj4C1PV+W5rL6cR6j1t7eRXXAHGnpTTbz4qmmfvNbi7b6jt/KZuaOCZqDUMAhzFcruB6ic/0NcDxBcuiab3VN19bDo8BjGqU4OgFF1KATfgbnQDU3UrgFaO0lAAAAABJRU5ErkJggg==';
+            img.alt = '';
+            img.setAttribute('aria-hidden', 'true');
+
+            img.style.display = 'inline-block';
+            img.style.width = '1em';
+            img.style.height = '1em';
+            img.style.padding = '0';
+            img.style.margin = '0';
+            img.style.marginRight = '0.25em';
+            (img.style as any).verticalAlign = 'text-bottom';
+            img.style.lineHeight = '1';
+            link.insertBefore(img, link.firstChild);
+            invalid_link = false;
+            if (matchedFromCurrent) {
+              orderedCurrentMastIds.push(matchedFromCurrent);
+            }
+          }
+        }
+
+        if (invalid_link && !href.startsWith('http://') && !href.startsWith("https://")) {
+          const span = document.createElement('span');
+          span.textContent = link.textContent || href;
+          (span as HTMLElement).style.color = props.textColor ?? defaultTextColor;
+          if (link.parentNode) link.parentNode.replaceChild(span, link);
+        }
       });
+
+      // Update ordered sources for rendering
+      setOrderedSources(orderedCurrentSources.length > 0 ? orderedCurrentSources : currentDocs);
+      setOrderedMenus(orderedCurrentMenus);
+      setOrderedMastIds(orderedCurrentMastIds);
 
       // Store the element ref for the copy function
       setBotMessageElement(el);
@@ -522,13 +713,13 @@ export const BotBubble = (props: Props) => {
         </div>
       </div>
       <div>
-        {props.message.sourceDocuments && props.message.sourceDocuments.length && (
+        {((orderedSources() && orderedSources().length > 0) || (props.message.sourceDocuments && props.message.sourceDocuments.length)) && (
           <>
             <Show when={props.sourceDocsTitle}>
               <span class="px-2 py-[10px] font-semibold">{props.sourceDocsTitle}</span>
             </Show>
             <div style={{ display: 'flex', 'flex-direction': 'row', width: '100%', 'flex-wrap': 'wrap', 'margin-left': '40px' }}>
-              <For each={[...removeDuplicateURL(props.message)].slice(0, 4)}>
+              <For each={(orderedSources().length > 0 ? orderedSources() : removeDuplicateURL(props.message)).slice(0, 4)}>
                 {(src, index) => {
                   const URL = isValidURL(src.metadata.source);
                   return (
@@ -541,7 +732,6 @@ export const BotBubble = (props: Props) => {
                         if (URL) {
                           window.open(src.metadata.source, '_blank');
                         } else {
-                          // props.handleSourceDocumentsClick(src);
                           if (props.observeSourceClick) {
                             props.observeSourceClick(src);
                           }
@@ -581,8 +771,8 @@ export const BotBubble = (props: Props) => {
                   {formatDateTime(props.message.dateTime, props?.dateTimeToggle?.date, props?.dateTimeToggle?.time)}
                 </div>
               </Show>
-              <Show when={props.message.menus && Array.isArray(props.message.menus) && props.message.menus.length > 0}>
-                <For each={props.message.menus.slice(0, 5)}>
+              <Show when={orderedMenus() && orderedMenus().length > 0}>
+                <For each={orderedMenus().slice(0, 5)}>
                   {(menu, index) => (
                     <button
                       disabled={props.isLoading}
@@ -612,14 +802,8 @@ export const BotBubble = (props: Props) => {
                   )}
                 </For>
               </Show>
-              <Show when={
-                  props.message.mastSearches
-                  && Array.isArray(props.message.mastSearches)
-                  && props.message.mastSearches.length > 0
-                  && props.message.mastSearches[props.message.mastSearches.length - 1].mastids
-                  && props.message.mastSearches[props.message.mastSearches.length - 1].mastids.length > 0
-              }>
-                <For each={props.message.mastSearches[props.message.mastSearches.length - 1].mastids}>
+              <Show when={orderedMastIds() && orderedMastIds().length > 0}>
+                <For each={orderedMastIds()}>
                   {(mastid, index) => (
                     <button
                       disabled={props.isLoading}

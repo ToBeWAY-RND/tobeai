@@ -56,6 +56,25 @@ export const SourceBubble = (props: Props) => (
           />
           <span
             style={{
+              width: '12px',
+              height: '12px',
+              'border-radius': '9999px',
+              'background-color': '#E0E0E0',
+              color: '#333333',
+              'font-size': '9px',
+              'font-weight': '600',
+              display: 'inline-flex',
+              'align-items': 'center',
+              'justify-content': 'center',
+              'line-height': '16px',
+              'flex-shrink': '0',
+            }}
+            aria-hidden="true"
+          >
+            {props.index + 1}
+          </span>
+          <span
+            style={{
               'text-overflow': 'ellipsis',
               overflow: 'hidden',
               'white-space': 'nowrap',

@@ -115,6 +115,7 @@ export const BotBubble = (props: Props) => {
       const orderedCurrentMenus: any[] = [];
       const orderedCurrentMastIds: string[] = [];
       let currentDocCounter = 0;
+      const docNumberMap = new Map<string, number>();
 
       el.querySelectorAll('a').forEach((link) => {
         let href = link.getAttribute('href') || '';
@@ -177,8 +178,15 @@ export const BotBubble = (props: Props) => {
             });
 
             link.setAttribute('role', 'button');
-            currentDocCounter += 1;
-            link.textContent = currentDocCounter.toString();
+            const docId = (doc && (doc as any).documentId) ? (doc as any).documentId : key;
+            let assigned = docNumberMap.get(docId);
+            if (!assigned) {
+              currentDocCounter += 1;
+              assigned = currentDocCounter;
+              docNumberMap.set(docId, assigned);
+              orderedCurrentSources.push(doc);
+            }
+            link.textContent = String(assigned);
             link.style.cursor = props.isLoading ? 'not-allowed' : 'pointer';
             // Style as a small grey circular badge
             link.style.display = 'inline-flex';
@@ -194,7 +202,6 @@ export const BotBubble = (props: Props) => {
             link.style.textDecoration = 'none';
             ;(link.style as any).lineHeight = '16px';
             invalid_link = false;
-            orderedCurrentSources.push(doc);
           } else {
             const prevDoc = Array.isArray(prevDocs) ? prevDocs.find((m: any) => m?.documentId === key) : undefined;
             if (prevDoc) {

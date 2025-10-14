@@ -778,67 +778,6 @@ export const BotBubble = (props: Props) => {
                   {formatDateTime(props.message.dateTime, props?.dateTimeToggle?.date, props?.dateTimeToggle?.time)}
                 </div>
               </Show>
-              <Show when={orderedMenus() && orderedMenus().length > 0}>
-                <For each={orderedMenus().slice(0, 5)}>
-                  {(menu, index) => (
-                    <button
-                      disabled={props.isLoading}
-                      class={
-                        'justify-center focus:outline-none flex items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-100 transition-all filter hover:brightness-90 active:brightness-75 mr-2'
-                      }
-                      style={{
-                        'font-size': '11px',
-                        'height': '24px', 
-                        'border-radius': '4px', 
-                        'border': 'none', // '1px solid #CED4DA',
-                        'padding': '6px'
-                      }}
-                      title={(props.langCode && menu.menu_names_by_lang?.[props.langCode]?.name)}
-                      onClick={() => {
-                        if (props.observeMenuClick) {
-                          props.observeMenuClick(menu);
-                        }
-                      }}
-                    > 
-                      <img 
-                        src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAD1SURBVHgBzZE/DgFREMZnZjdqN8AJHIEjcAMShQjFokAUCkRhUSCiwQlwA0fgBusGG4mCMOtteGLFnxUFXzPzZvL9Mm8G4NdCmTT0QZCRvbdNZjbK+fS62uz6iMgv62SRWcglV3auyqKFPEO8oyvKQoQ4IXVEjFzByIYIAQfgrGO8qGUWcKdSLhW1Y03vjRAxdtsjcKmLOSzS2McAaWaPJyyGNj4C1PV+W5rL6cR6j1t7eRXXAHGnpTTbz4qmmfvNbi7b6jt/KZuaOCZqDUMAhzFcruB6ic/0NcDxBcuiab3VN19bDo8BjGqU4OgFF1KATfgbnQDU3UrgFaO0lAAAAABJRU5ErkJggg==" 
-                        style={{ 'margin-right': '2px' }}
-                      />
-                      {(typeof menu.menu_alias === 'string' && menu.menu_alias.trim() !== '' && menu.menu_alias !== menu.menuid) ? `${menu.menu_alias} (${menu.menuid})` : menu.menuid}
-                    </button>
-                  )}
-                </For>
-              </Show>
-              <Show when={orderedMastIds() && orderedMastIds().length > 0}>
-                <For each={orderedMastIds()}>
-                  {(mastid, index) => (
-                    <button
-                      disabled={props.isLoading}
-                      class={
-                        'justify-center focus:outline-none flex items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-100 transition-all filter hover:brightness-90 active:brightness-75 mr-2'
-                      }
-                      style={{
-                        'font-size': '11px',
-                        'height': '24px',
-                        'border-radius': '4px',
-                        'border': 'none', // '1px solid #CED4DA',
-                        'padding': '6px'
-                      }}
-                      onClick={() => {
-                        if (props.observeMastClick) {
-                          props.observeMastClick(mastid);
-                        }
-                      }}
-                    >
-                      <img
-                        src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAD1SURBVHgBzZE/DgFREMZnZjdqN8AJHIEjcAMShQjFokAUCkRhUSCiwQlwA0fgBusGG4mCMOtteGLFnxUFXzPzZvL9Mm8G4NdCmTT0QZCRvbdNZjbK+fS62uz6iMgv62SRWcglV3auyqKFPEO8oyvKQoQ4IXVEjFzByIYIAQfgrGO8qGUWcKdSLhW1Y03vjRAxdtsjcKmLOSzS2McAaWaPJyyGNj4C1PV+W5rL6cR6j1t7eRXXAHGnpTTbz4qmmfvNbi7b6jt/KZuaOCZqDUMAhzFcruB6ic/0NcDxBcuiab3VN19bDo8BjGqU4OgFF1KATfgbnQDU3UrgFaO0lAAAAABJRU5ErkJggg=="
-                        style={{ 'margin-right': '2px' }}
-                      />
-                      { mastid }
-                    </button>
-                  )}
-                </For>
-              </Show>
             </div>
             <Show when={showFeedbackContentDialog()}>
               <FeedbackContentDialog

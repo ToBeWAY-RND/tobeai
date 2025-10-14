@@ -188,10 +188,9 @@ export const BotBubble = (props: Props) => {
             }
             link.textContent = String(assigned);
             link.style.cursor = props.isLoading ? 'not-allowed' : 'pointer';
-            // Style as a small grey circular badge
             link.style.display = 'inline-flex';
-            ;(link.style as any).alignItems = 'center';
-            ;(link.style as any).justifyContent = 'center';
+            (link.style as any).alignItems = 'center';
+            (link.style as any).justifyContent = 'center';
             link.style.width = '16px';
             link.style.height = '16px';
             link.style.borderRadius = '9999px';
@@ -200,7 +199,7 @@ export const BotBubble = (props: Props) => {
             link.style.fontSize = '11px';
             link.style.fontWeight = '600';
             link.style.textDecoration = 'none';
-            ;(link.style as any).lineHeight = '16px';
+            (link.style as any).lineHeight = '16px';
             invalid_link = false;
           } else {
             const prevDoc = Array.isArray(prevDocs) ? prevDocs.find((m: any) => m?.documentId === key) : undefined;
@@ -214,6 +213,18 @@ export const BotBubble = (props: Props) => {
               link.setAttribute('role', 'button');
               link.textContent = '*';
               link.style.cursor = props.isLoading ? 'not-allowed' : 'pointer';
+              link.style.display = 'inline-flex';
+              (link.style as any).alignItems = 'center';
+              (link.style as any).justifyContent = 'center';
+              link.style.width = '16px';
+              link.style.height = '16px';
+              link.style.borderRadius = '9999px';
+              link.style.backgroundColor = '#E0E0E0';
+              link.style.color = '#333333';
+              link.style.fontSize = '11px';
+              link.style.fontWeight = '600';
+              link.style.textDecoration = 'none';
+              (link.style as any).lineHeight = '16px';
               invalid_link = false;
             } else {
               link.textContent = '';
@@ -285,7 +296,7 @@ export const BotBubble = (props: Props) => {
       });
 
       // Update ordered sources for rendering
-      setOrderedSources(orderedCurrentSources.length > 0 ? orderedCurrentSources : currentDocs);
+      setOrderedSources(orderedCurrentSources);
       setOrderedMenus(orderedCurrentMenus);
       setOrderedMastIds(orderedCurrentMastIds);
 
@@ -597,11 +608,11 @@ export const BotBubble = (props: Props) => {
       return '';
     }
   };
-  const getAvatarSrcSrc = (sourceDocuments: any[], isLoading: boolean, messageType: string, message: string) => {
-    if(isLoading && messageType === 'apiMessage') {
+  const getAvatarSrcSrc = () => {
+    if (props?.isLoading && props.message.type === 'apiMessage') {
       return props.avatarLoadingSrc;
-    } else if(props.message.sourceDocuments) {
-      if(props.message.sourceDocuments.length === 0) {
+    } else if (props.message.sourceDocuments) {
+      if (props.message.sourceDocuments.length === 0) {
         return props.avatarEmptySrc;
       } else {
         return props.avatarInfoSrc;
@@ -614,7 +625,7 @@ export const BotBubble = (props: Props) => {
     <div>
       <div class="flex flex-row justify-start mb-2 items-start host-container" style={{ 'margin-right': '50px' }}>
         <Show when={props.showAvatar}>
-          <Avatar initialAvatarSrc={getAvatarSrcSrc(props.message.sourceDocuments, props?.isLoading, props.message.type, props.message.message)} />
+          <Avatar initialAvatarSrc={getAvatarSrcSrc()} />
         </Show>
         <div class="flex flex-col justify-start">
           {props.showAgentMessages &&

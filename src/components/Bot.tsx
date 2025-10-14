@@ -629,7 +629,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
   const updateErrorMessage = (errorMessage: string) => {
     setMessages((prevMessages) => {
       const allMessages = [...cloneDeep(prevMessages)];
-      allMessages.push({ message: props.errorMessage || errorMessage, type: 'apiMessage', sourceDocuments: [] });
+      allMessages.push({ message: props.errorMessage || errorMessage, type: 'apiMessage' });
       addChatMessage(allMessages);
       return allMessages;
     });
@@ -639,7 +639,14 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     setMessages((data) => {
       const updated = data.map((item, i) => {
         if (i === data.length - 1) {
-          return { ...item, sourceDocuments };
+          const newItem: any = { ...item };
+          if (sourceDocuments === null || typeof sourceDocuments === 'undefined') {
+            // Ensure the property is not present when null/undefined
+            if ('sourceDocuments' in newItem) delete newItem.sourceDocuments;
+          } else {
+            newItem.sourceDocuments = sourceDocuments;
+          }
+          return newItem;
         }
         return item;
       });
@@ -769,7 +776,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
   const updateAgentFlowEvent = (event: string) => {
     if (event === 'INPROGRESS') {
       setCalledTools([]);
-      setMessages((prevMessages) => [...prevMessages, { message: '', type: 'apiMessage', agentFlowEventStatus: event, sourceDocuments: [] }]);
+      setMessages((prevMessages) => [...prevMessages, { message: '', type: 'apiMessage', agentFlowEventStatus: event }]);
     } else {
       setMessages((prevMessages) => {
         const allMessages = [...cloneDeep(prevMessages)];
@@ -826,7 +833,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       errMessage = props.errorMessage;
     }
     setMessages((prevMessages) => {
-      const messages: MessageType[] = [...prevMessages, { message: errMessage, type: 'apiMessage', sourceDocuments: [] }];
+      const messages: MessageType[] = [...prevMessages, { message: errMessage, type: 'apiMessage' }];
       addChatMessage(messages);
       return messages;
     });
@@ -926,7 +933,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         switch (payload.event) {
           case 'start':
             setCalledTools([]);
-            setMessages((prevMessages) => [...prevMessages, { message: '', type: 'apiMessage', sourceDocuments: [] }]);
+            setMessages((prevMessages) => [...prevMessages, { message: '', type: 'apiMessage' }]);
             break;
           case 'token':
             updateLastMessage(payload.data);
@@ -1215,7 +1222,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         const newMessage = {
           message: text,
           id: data?.chatMessageId,
-          sourceDocuments: data?.sourceDocuments,
           usedTools: data?.usedTools,
           menus: data?.menus,
           mastSearches: data?.mastSearches,
@@ -1228,6 +1234,9 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           feedback: null,
           dateTime: new Date().toISOString(),
         } as MessageType;
+        if (data?.sourceDocuments !== null && typeof data?.sourceDocuments !== 'undefined') {
+          (newMessage as any).sourceDocuments = data.sourceDocuments;
+        }
         setMessages((prevMessages) => {
           const allMessages = [...cloneDeep(prevMessages)];
           allMessages.push(newMessage);
@@ -1446,7 +1455,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                   typeof message.agentFlowExecutedData === 'string' ? JSON.parse(message.agentFlowExecutedData) : message.agentFlowExecutedData;
               return chatHistory;
             })
-          : [{ message: props.welcomeMessage ?? defaultWelcomeMessage, type: 'apiMessage', sourceDocuments: [] }];
+          : [{ message: props.welcomeMessage ?? defaultWelcomeMessage, type: 'apiMessage' }];
 
       const filteredMessages = loadedMessages.filter((message) => message.type !== 'leadCaptureMessage');
       setMessages([...filteredMessages]);
@@ -1572,7 +1581,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         {
           message: props.welcomeMessage ?? defaultWelcomeMessage,
           type: 'apiMessage',
-          sourceDocuments: [],
         },
       ]);
     };

@@ -87,11 +87,14 @@ export type IAgentReasoning = {
 };
 
 export type IAction = {
+  action?: string;
   id?: string;
   data?: any;
   elements?: Array<{
     type: string;
     label: string;
+    prop_field?: string;
+    prop_id?: string;
   }>;
   mapping?: {
     approve: string;
@@ -141,8 +144,17 @@ type IUploads = {
   mime: string;
 }[];
 
-type observerConfigType = (accessor: string | boolean | object | MessageType[]) => void;
-export type observersConfigType = Record<'observeUserInput' | 'observeLoading' | 'observeMessages' | 'observeSourceClick' | 'observeMenuClick' | 'observeMastClick', observerConfigType>;
+type observerConfigType = (accessor: any) => void;
+export type observersConfigType = {
+  observeUserInput?: observerConfigType;
+  observeLoading?: observerConfigType;
+  observeMessages?: observerConfigType;
+  observeSourceClick?: observerConfigType;
+  observeMenuClick?: observerConfigType;
+  observeMastClick?: observerConfigType;
+  fetchPropName?: (propId: string) => Promise<string> | string;
+  applySearch?: (data: any) => Promise<{ ok: boolean; error?: string } | { ok: false; error: string } | any>;
+};
 
 export type BotProps = {
   chatflowid: string;
@@ -444,6 +456,9 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
   const [followUpPromptsStatus, setFollowUpPromptsStatus] = createSignal<boolean>(false);
   const [followUpPrompts, setFollowUpPrompts] = createSignal<string[]>([]);
 
+  // Cache for choose_one_property answers within the current session
+  const [chooseOnePropertyCache, setChooseOnePropertyCache] = createSignal<Record<string, string>>({});
+
   // drag & drop
   const [isDragActive, setIsDragActive] = createSignal(false);
   const [uploadedFiles, setUploadedFiles] = createSignal<{ file: File; type: string }[]>([]);
@@ -545,6 +560,50 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
   };
 
   /**
+   * Normalize consecutive AI messages into a single message and persist chat history.
+   */
+  const normalizeConsecutiveAIMessages = (list: MessageType[]) => {
+    if (!Array.isArray(list) || list.length === 0) return list;
+    const result: MessageType[] = [];
+
+    let i = 0;
+    while (i < list.length) {
+      const current = list[i];
+      if (current.type !== 'apiMessage') {
+        result.push(current);
+        i += 1;
+        continue;
+      }
+      // Start a run of consecutive apiMessages
+      const run: MessageType[] = [current];
+      let j = i + 1;
+      while (j < list.length && list[j].type === 'apiMessage') {
+        run.push(list[j]);
+        j += 1;
+      }
+      if (run.length === 1) {
+        result.push(current);
+      } else {
+        // Merge: use the last message object for metadata, concatenate messages
+        const last = run[run.length - 1] as any;
+        const mergedText = run
+          .map((m) => (m?.message ?? '').trim())
+          .filter((t) => t.length > 0)
+          .join('\n\n');
+        const merged: any = { ...last };
+        merged.message = mergedText;
+        // Ensure the message id fields are from the last one
+        if (last?.id) merged.id = last.id;
+        if (last?.messageId) merged.messageId = last.messageId;
+        result.push(merged as MessageType);
+      }
+      i = j;
+    }
+
+    return result;
+  };
+
+  /**
    * Add each chat message into localStorage
    */
   const addChatMessage = (allMessage: MessageType[]) => {
@@ -561,6 +620,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     });
     setLocalStorageChatflow(props.chatflowid, chatId(), { chatHistory: messages });
   };
+
 
   // Define the audioRef
   let audioRef: HTMLAudioElement | undefined;
@@ -629,7 +689,14 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
   const updateErrorMessage = (errorMessage: string) => {
     setMessages((prevMessages) => {
       const allMessages = [...cloneDeep(prevMessages)];
-      allMessages.push({ message: props.errorMessage || errorMessage, type: 'apiMessage' });
+      const content = props.errorMessage || errorMessage;
+      if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {
+        const last = allMessages[allMessages.length - 1];
+        const prefix = (last.message && last.message.length > 0) ? '\n\n' : '';
+        last.message = `${last.message ?? ''}${prefix}${content}`;
+      } else {
+        allMessages.push({ message: content, type: 'apiMessage' });
+      }
       addChatMessage(allMessages);
       return allMessages;
     });
@@ -659,7 +726,12 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     setMessages((prevMessages) => {
       const allMessages = [...cloneDeep(prevMessages)];
       if (allMessages[allMessages.length - 1].type === 'userMessage') return allMessages;
-      allMessages[allMessages.length - 1].usedTools = usedTools;
+      const lastMessage = allMessages[allMessages.length - 1];
+      if (lastMessage.usedTools && Array.isArray(lastMessage.usedTools)) {
+        lastMessage.usedTools = lastMessage.usedTools.concat(usedTools);
+      } else {
+        lastMessage.usedTools = usedTools;
+      }
       addChatMessage(allMessages);
       return allMessages;
     });
@@ -776,7 +848,15 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
   const updateAgentFlowEvent = (event: string) => {
     if (event === 'INPROGRESS') {
       setCalledTools([]);
-      setMessages((prevMessages) => [...prevMessages, { message: '', type: 'apiMessage', agentFlowEventStatus: event }]);
+      setMessages((prevMessages) => {
+        const allMessages = [...cloneDeep(prevMessages)];
+        if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {
+          allMessages[allMessages.length - 1].agentFlowEventStatus = event;
+        } else {
+          allMessages.push({ message: '', type: 'apiMessage', agentFlowEventStatus: event });
+        }
+        return allMessages;
+      });
     } else {
       setMessages((prevMessages) => {
         const allMessages = [...cloneDeep(prevMessages)];
@@ -807,11 +887,170 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     });
   };
 
+
   const updateLastMessageAction = (action: IAction) => {
+    const parsedAction: IAction = typeof action === 'string' ? JSON.parse(action as any) : action;
+
+    // Handle custom actions
+    if (parsedAction?.action === 'choose_one_property') {
+      const data: any = parsedAction.data || {};
+      const propertyValue: string = data?.property_value ?? '';
+      const propertyIds: Array<{ prop_id: string; prop_field: string }> = data?.property_ids ?? [];
+
+      // Create or use the current AI message asking to choose a property
+      setMessages((prev) => {
+        const all = [...cloneDeep(prev)];
+        const content = `'${propertyValue}'에 해당하는 속성을 선택해주세요.`;
+        if (all.length > 0 && all[all.length - 1].type === 'apiMessage') {
+          const lastIdx = all.length - 1;
+          const prefix = all[lastIdx].message && all[lastIdx].message.length > 0 ? '\n\n' : '';
+          all[lastIdx].message = `${all[lastIdx].message ?? ''}${prefix}${content}`;
+        } else {
+          all.push({ message: content, type: 'apiMessage' });
+        }
+        addChatMessage(all);
+        return all;
+      });
+
+      // If we have a cached choice for this property value, append the selection and auto-submit without rendering buttons
+      (async () => {
+        try {
+          if (propertyValue) {
+            const cached = chooseOnePropertyCache()[propertyValue];
+            if (cached) {
+              const getName = botProps.observersConfig?.fetchPropName;
+              let display = '건너뛰기';
+              if (cached !== 'skip') {
+                const found = propertyIds.find((p) => p.prop_field === cached);
+                if (found) {
+                  let name = '';
+                  try {
+                    if (typeof getName === 'function') {
+                      const res = await getName(found.prop_id);
+                      name = typeof res === 'string' ? res : String(res ?? '');
+                    }
+                  } catch (e) {
+                    // ignore
+                  }
+                  display = `[${found.prop_id}] ${name}`.trim();
+                } else {
+                  display = cached;
+                }
+              }
+              // Append selected property to the last AI message
+              setMessages((prev) => {
+                const all = [...cloneDeep(prev)];
+                if (all.length > 0) {
+                  const lastIdx = all.length - 1;
+                  if (all[lastIdx].type === 'apiMessage') {
+                    const prefix = all[lastIdx].message && all[lastIdx].message.length > 0 ? '\n\n' : '';
+                    all[lastIdx].message = `${all[lastIdx].message ?? ''}${prefix}${display}`;
+                  }
+                }
+                addChatMessage(all);
+                return all;
+              });
+
+              const humanInput = { ok: true, data: { choice: cached } };
+              await handleSubmit('', parsedAction, humanInput, true);
+              return;
+            }
+          }
+        } catch (e) {
+          // ignore cache errors
+        }
+
+        // No cache: Fetch property names and then update the last message with vertical buttons
+        const getName = botProps.observersConfig?.fetchPropName;
+        const elements: any[] = [];
+        for (const item of propertyIds) {
+          let name = '';
+          try {
+            if (typeof getName === 'function') {
+              const res = await getName(item.prop_id);
+              name = typeof res === 'string' ? res : String(res ?? '');
+            }
+          } catch (e) {
+            // ignore and keep empty name
+          }
+          const label = `[${item.prop_id}] ${name}`.trim();
+          elements.push({ type: 'choose-one-item', label, prop_field: item.prop_field, prop_id: item.prop_id });
+        }
+        // Add skip button
+        elements.push({ type: 'choose-one-skip', label: '건너뛰기', prop_field: 'skip' });
+
+        setMessages((prev) => {
+          const all = [...cloneDeep(prev)];
+          if (all.length > 0) {
+            const lastIdx = all.length - 1;
+            if (all[lastIdx].type === 'apiMessage') {
+              (all[lastIdx] as any).action = { ...parsedAction, elements } as IAction;
+            }
+          }
+          addChatMessage(all);
+          return all;
+        });
+      })();
+      return;
+    }
+
+    if (parsedAction?.action === 'search') {
+      const data: any = parsedAction.data || {};
+      const comment: string = data?.comment ?? '';
+
+      // Clear choose_one_property cache when a 'search' action is triggered
+      setChooseOnePropertyCache({});
+
+      // Append the search comment to the current AI message (no new message)
+      setMessages((prev) => {
+        const all = [...cloneDeep(prev)];
+        if (all.length > 0) {
+          const lastIdx = all.length - 1;
+          if (all[lastIdx].type === 'apiMessage') {
+            const prefix = all[lastIdx].message && all[lastIdx].message.length > 0 ? '\n\n' : '';
+            all[lastIdx].message = `${all[lastIdx].message ?? ''}${prefix}${comment}\n\n`;
+          } else {
+            // Fallback: create a new AI message if the last one isn't apiMessage
+            all.push({ message: comment + "\n\n", type: 'apiMessage' });
+          }
+        } else {
+          all.push({ message: comment + '\n\n', type: 'apiMessage' });
+        }
+        addChatMessage(all);
+        return all;
+      });
+
+      // Indicate loading while applySearch is running
+      setLoading(true);
+
+      // Call applySearch observer and send result back without creating a user message
+      (async () => {
+        let humanInput: any = { ok: false, error: 'applySearch not implemented' };
+        try {
+          const applySearchFn = botProps.observersConfig?.applySearch;
+          if (typeof applySearchFn === 'function') {
+            const res = await applySearchFn(parsedAction.data);
+            if (res && typeof res === 'object' && 'ok' in res) humanInput = res;
+            else humanInput = { ok: true };
+          }
+        } catch (e: any) {
+          humanInput = { ok: false, error: e?.message ?? 'Unknown error' };
+        } finally {
+          // no-op here; we will set loading false after submitting the server response
+        }
+
+        await handleSubmit('', parsedAction, humanInput, true);
+        // Stop loading after the server response has been appended
+        setLoading(false);
+      })();
+      return;
+    }
+
+    // Default behavior: attach action to the last AI message
     setMessages((data) => {
       const updated = data.map((item, i) => {
         if (i === data.length - 1) {
-          return { ...item, action: typeof action === 'string' ? JSON.parse(action) : action };
+          return { ...item, action: parsedAction };
         }
         return item;
       });
@@ -833,9 +1072,16 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       errMessage = props.errorMessage;
     }
     setMessages((prevMessages) => {
-      const messages: MessageType[] = [...prevMessages, { message: errMessage, type: 'apiMessage' }];
-      addChatMessage(messages);
-      return messages;
+      const allMessages: MessageType[] = [...cloneDeep(prevMessages)];
+      if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {
+        const last = allMessages[allMessages.length - 1];
+        const prefix = (last.message && last.message.length > 0) ? '\n\n' : '';
+        last.message = `${last.message ?? ''}${prefix}${errMessage}`;
+      } else {
+        allMessages.push({ message: errMessage, type: 'apiMessage' });
+      }
+      addChatMessage(allMessages);
+      return allMessages;
     });
     setLoading(false);
     setUserInput('');
@@ -902,6 +1148,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     const chatId = params.chatId;
     const input = params.question;
     params.streaming = true;
+
     fetchEventSource(`${props.apiHost}/api/v1/prediction/${chatflowid}`, {
       openWhenHidden: true,
       method: 'POST',
@@ -933,7 +1180,17 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         switch (payload.event) {
           case 'start':
             setCalledTools([]);
-            setMessages((prevMessages) => [...prevMessages, { message: '', type: 'apiMessage' }]);
+            if (!(params?.action && params.action.action === 'search')) {
+              setMessages((prevMessages) => {
+                const allMessages = [...cloneDeep(prevMessages)];
+                if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {
+                  // Ensure we start appending tokens to the existing last AI message
+                } else {
+                  allMessages.push({ message: '', type: 'apiMessage' });
+                }
+                return allMessages;
+              });
+            }
             break;
           case 'token':
             updateLastMessage(payload.data);
@@ -1132,8 +1389,8 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
   };
 
   // Handle form submission
-  const handleSubmit = async (value: string | object, action?: IAction | undefined | null, humanInput?: any) => {
-    if (typeof value === 'string' && value.trim() === '') {
+  const handleSubmit = async (value: string | object, action?: IAction | undefined | null, humanInput?: any, noUserMessage?: boolean) => {
+    if (!action && typeof value === 'string' && value.trim() === '') {
       const containsFile = previews().filter((item) => !item.mime.startsWith('image') && item.type !== 'audio').length > 0;
       if (!previews().length || (previews().length && containsFile)) {
         return;
@@ -1171,11 +1428,13 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
     clearPreviews();
 
-    setMessages((prevMessages) => {
-      const messages: MessageType[] = [...prevMessages, { message: value as string, type: 'userMessage', fileUploads: uploads }];
-      addChatMessage(messages);
-      return messages;
-    });
+    if (!noUserMessage) {
+      setMessages((prevMessages) => {
+        const messages: MessageType[] = [...prevMessages, { message: value as string, type: 'userMessage', fileUploads: uploads }];
+        addChatMessage(messages);
+        return messages;
+      });
+    }
 
     const body: IncomingInput = {
       question: value,
@@ -1219,39 +1478,96 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
         playReceiveSound();
 
-        const newMessage = {
-          message: text,
-          id: data?.chatMessageId,
-          usedTools: data?.usedTools,
-          menus: data?.menus,
-          mastSearches: data?.mastSearches,
-          fileAnnotations: data?.fileAnnotations,
-          agentReasoning: data?.agentReasoning,
-          agentFlowExecutedData: data?.agentFlowExecutedData,
-          action: data?.action,
-          artifacts: data?.artifacts,
-          type: 'apiMessage' as messageType,
-          feedback: null,
-          dateTime: new Date().toISOString(),
-        } as MessageType;
-        if (data?.sourceDocuments !== null && typeof data?.sourceDocuments !== 'undefined') {
-          (newMessage as any).sourceDocuments = data.sourceDocuments;
+        if (noUserMessage || (action && (action as any).action === 'search')) {
+          // Append to the last AI message instead of creating a new one
+          setMessages((prev) => {
+            const all = [...cloneDeep(prev)];
+            if (all.length > 0) {
+              const lastIdx = all.length - 1;
+              if (all[lastIdx].type === 'apiMessage') {
+                const prefix = all[lastIdx].message && all[lastIdx].message.length > 0 ? '\n\n' : '';
+                all[lastIdx].message = `${all[lastIdx].message ?? ''}${prefix}${text}`;
+                if (Array.isArray((data as any).usedTools)) {
+                  (all[lastIdx] as any).usedTools = (data as any).usedTools;
+                }
+                if ((data as any).menus) (all[lastIdx] as any).menus = (data as any).menus;
+                if ((data as any).mastSearches) (all[lastIdx] as any).mastSearches = (data as any).mastSearches;
+                if ((data as any).fileAnnotations) (all[lastIdx] as any).fileAnnotations = (data as any).fileAnnotations;
+                if ((data as any).agentReasoning) (all[lastIdx] as any).agentReasoning = (data as any).agentReasoning;
+                if ((data as any).agentFlowExecutedData) (all[lastIdx] as any).agentFlowExecutedData = (data as any).agentFlowExecutedData;
+                if ((data as any).action) (all[lastIdx] as any).action = (data as any).action;
+                if ((data as any).artifacts) (all[lastIdx] as any).artifacts = (data as any).artifacts;
+                if ((data as any).sourceDocuments !== null && typeof (data as any).sourceDocuments !== 'undefined') {
+                  (all[lastIdx] as any).sourceDocuments = (data as any).sourceDocuments;
+                }
+              }
+            }
+            addChatMessage(all);
+            return all;
+          });
+
+          updateMetadata(data, '');
+
+          setLoading(false);
+          setUserInput('');
+          setUploadedFiles([]);
+          scrollToBottom();
+        } else {
+          const newMessage = {
+            message: text,
+            id: data?.chatMessageId,
+            usedTools: data?.usedTools,
+            menus: data?.menus,
+            mastSearches: data?.mastSearches,
+            fileAnnotations: data?.fileAnnotations,
+            agentReasoning: data?.agentReasoning,
+            agentFlowExecutedData: data?.agentFlowExecutedData,
+            action: data?.action,
+            artifacts: data?.artifacts,
+            type: 'apiMessage' as messageType,
+            feedback: null,
+            dateTime: new Date().toISOString(),
+          } as MessageType;
+          if (data?.sourceDocuments !== null && typeof data?.sourceDocuments !== 'undefined') {
+            (newMessage as any).sourceDocuments = data.sourceDocuments;
+          }
+          setMessages((prevMessages) => {
+            const allMessages = [...cloneDeep(prevMessages)];
+            if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {
+              const lastIdx = allMessages.length - 1;
+              const prefix = allMessages[lastIdx].message && allMessages[lastIdx].message.length > 0 ? '\n\n' : '';
+              allMessages[lastIdx].message = `${allMessages[lastIdx].message ?? ''}${prefix}${newMessage.message}`;
+              // Merge metadata into the last AI message
+              const target: any = allMessages[lastIdx];
+              if (newMessage.id) target.id = newMessage.id;
+              if ((newMessage as any).messageId) (target as any).messageId = (newMessage as any).messageId;
+              if (Array.isArray(newMessage.usedTools)) target.usedTools = newMessage.usedTools;
+              if ((newMessage as any).menus) target.menus = (newMessage as any).menus;
+              if ((newMessage as any).mastSearches) target.mastSearches = (newMessage as any).mastSearches;
+              if ((newMessage as any).fileAnnotations) target.fileAnnotations = (newMessage as any).fileAnnotations;
+              if ((newMessage as any).agentReasoning) target.agentReasoning = (newMessage as any).agentReasoning;
+              if ((newMessage as any).agentFlowExecutedData) target.agentFlowExecutedData = (newMessage as any).agentFlowExecutedData;
+              if ((newMessage as any).action) target.action = (newMessage as any).action;
+              if ((newMessage as any).artifacts) target.artifacts = (newMessage as any).artifacts;
+              if ((newMessage as any).sourceDocuments !== null && typeof (newMessage as any).sourceDocuments !== 'undefined') {
+                target.sourceDocuments = (newMessage as any).sourceDocuments;
+              }
+            } else {
+              allMessages.push(newMessage);
+            }
+            addChatMessage(allMessages);
+            return allMessages;
+          });
+          // Log success for sync response
+          await logMessageCompletion('success', typeof value === 'string' ? (value as string) : undefined, newMessage);
+
+          updateMetadata(data, value);
+
+          setLoading(false);
+          setUserInput('');
+          setUploadedFiles([]);
+          scrollToBottom();
         }
-        setMessages((prevMessages) => {
-          const allMessages = [...cloneDeep(prevMessages)];
-          allMessages.push(newMessage);
-          addChatMessage(allMessages);
-          return allMessages;
-        });
-        // Log success for sync response
-        await logMessageCompletion('success', typeof value === 'string' ? (value as string) : undefined, newMessage);
-
-        updateMetadata(data, value);
-
-        setLoading(false);
-        setUserInput('');
-        setUploadedFiles([]);
-        scrollToBottom();
       }
       if (result.error) {
         const error = result.error;
@@ -1327,7 +1643,8 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       addChatMessage(updated);
       return [...updated];
     });
-    if (elem.type.includes('agentflowv2')) {
+
+    if (elem?.type && elem.type.includes('agentflowv2')) {
       const type = elem.type.includes('approve') ? 'proceed' : 'reject';
       setFeedbackType(type);
 
@@ -1337,13 +1654,50 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       } else if (action) {
         onSubmitResponse(action.data, '', type);
       }
-    } else {
-      handleSubmit(elem.label, action);
+      return;
     }
+
+    // Custom action: choose_one_property
+    if (action && (action as any).action === 'choose_one_property') {
+      // Cache the user's selection within the session
+      try {
+        const key = (action as any)?.data?.property_value ?? '';
+        if (key) {
+          const choice = elem?.prop_field ?? 'skip';
+          setChooseOnePropertyCache((prev) => ({ ...prev, [key]: choice }));
+        }
+      } catch (e) {
+        // ignore cache errors
+      }
+
+      // Append the selected property label (or skip) to the current AI message
+      setMessages((prev) => {
+        const all = [...cloneDeep(prev)];
+        if (all.length > 0) {
+          const lastIdx = all.length - 1;
+          if (all[lastIdx].type === 'apiMessage') {
+            const prefix = all[lastIdx].message && all[lastIdx].message.length > 0 ? '\n\n' : '';
+            all[lastIdx].message = `${all[lastIdx].message ?? ''}${prefix}${elem?.label ?? '건너뛰기'} ✔️`;
+          }
+        }
+        addChatMessage(all);
+        return all;
+      });
+
+      const humanInput = { ok: true, data: { choice: elem?.prop_field ?? null } };
+      // Do not create a user message; auto-submit with the selected choice
+      handleSubmit('', action, humanInput, true);
+      return;
+    }
+
+    // Default behavior
+    handleSubmit(elem.label, action);
   };
 
   const clearChat = () => {
     try {
+      // Clear session caches
+      setChooseOnePropertyCache({});
       removeLocalStorageChatHistory(props.chatflowid);
       setChatId(
         (props.chatflowConfig?.vars as any)?.customerId ? `${(props.chatflowConfig?.vars as any).customerId.toString()}+${uuidv4()}` : uuidv4(),

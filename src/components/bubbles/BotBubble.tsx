@@ -694,7 +694,7 @@ export const BotBubble = (props: Props) => {
             />
           )}
           {props.message.action && (
-            <div class="px-4 py-2 flex flex-row justify-start space-x-2">
+            <div class={`px-4 py-2 ${props.message.action?.action === 'choose_one_property' ? 'flex flex-col space-y-2' : 'flex flex-row justify-start space-x-2'}`}>
               <For each={props.message.action.elements || []}>
                 {(action) => {
                   return (
@@ -720,7 +720,13 @@ export const BotBubble = (props: Props) => {
                           {action.label}
                         </button>
                       ) : (
-                        <button>{action.label}</button>
+                        <button
+                          type="button"
+                          class="px-4 py-2 font-medium text-gray-700 border border-gray-300 rounded-full hover:bg-gray-100 transition-colors duration-300"
+                          onClick={() => props.handleActionClick(action, props.message.action)}
+                        >
+                          {action.label}
+                        </button>
                       )}
                     </>
                   );

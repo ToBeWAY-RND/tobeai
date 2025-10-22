@@ -897,8 +897,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       const propertyValue: string = data?.property_value ?? '';
       const propertyIds: Array<{ prop_id: string; prop_field: string }> = data?.property_ids ?? [];
 
-      console.log("choose_one_property: ", propertyValue, propertyIds);
-
       (async () => {
         try {
           if (propertyValue) {
@@ -959,7 +957,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
     if (parsedAction?.action === 'search') {
       const data: any = parsedAction.data || {};
-      console.log("search: ", data);
 
       // 속성 선택 캐쉬 초기화
       setChooseOnePropertyCache({});

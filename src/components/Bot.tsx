@@ -897,70 +897,34 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       const propertyValue: string = data?.property_value ?? '';
       const propertyIds: Array<{ prop_id: string; prop_field: string }> = data?.property_ids ?? [];
 
-      // Create or use the current AI message asking to choose a property
-      setMessages((prev) => {
-        const all = [...cloneDeep(prev)];
-        const content = `'${propertyValue}'에 해당하는 속성을 선택해주세요.`;
-        if (all.length > 0 && all[all.length - 1].type === 'apiMessage') {
-          const lastIdx = all.length - 1;
-          const prefix = all[lastIdx].message && all[lastIdx].message.length > 0 ? '\n\n' : '';
-          all[lastIdx].message = `${all[lastIdx].message ?? ''}${prefix}${content}`;
-        } else {
-          all.push({ message: content, type: 'apiMessage' });
-        }
-        addChatMessage(all);
-        return all;
-      });
+      console.log("choose_one_property: ", propertyValue, propertyIds);
 
-      // If we have a cached choice for this property value, append the selection and auto-submit without rendering buttons
       (async () => {
         try {
           if (propertyValue) {
             const cached = chooseOnePropertyCache()[propertyValue];
             if (cached) {
-              const getName = botProps.observersConfig?.fetchPropName;
-              let display = '건너뛰기';
-              if (cached !== 'skip') {
-                const found = propertyIds.find((p) => p.prop_field === cached);
-                if (found) {
-                  let name = '';
-                  try {
-                    if (typeof getName === 'function') {
-                      const res = await getName(found.prop_id);
-                      name = typeof res === 'string' ? res : String(res ?? '');
-                    }
-                  } catch (e) {
-                    // ignore
-                  }
-                  display = `[${found.prop_id}] ${name}`.trim();
-                } else {
-                  display = cached;
-                }
-              }
-              // Append selected property to the last AI message
-              setMessages((prev) => {
-                const all = [...cloneDeep(prev)];
-                if (all.length > 0) {
-                  const lastIdx = all.length - 1;
-                  if (all[lastIdx].type === 'apiMessage') {
-                    const prefix = all[lastIdx].message && all[lastIdx].message.length > 0 ? '\n\n' : '';
-                    all[lastIdx].message = `${all[lastIdx].message ?? ''}${prefix}${display}`;
-                  }
-                }
-                addChatMessage(all);
-                return all;
-              });
-
               const humanInput = { ok: true, data: { choice: cached } };
               await handleSubmit('', parsedAction, humanInput, true);
               return;
             }
           }
-        } catch (e) {
-          // ignore cache errors
-        }
+        } catch (e) { /* ignored */ }
 
-        // No cache: Fetch property names and then update the last message with vertical buttons
+        setMessages((prev) => {
+          const all = [...cloneDeep(prev)];
+          const content = `'${propertyValue}'에 해당하는 속성을 선택해주세요.`;
+          if (all.length > 0 && all[all.length - 1].type === 'apiMessage') {
+            const lastIdx = all.length - 1;
+            const prefix = all[lastIdx].message && all[lastIdx].message.length > 0 ? '\n\n' : '';
+            all[lastIdx].message = `${all[lastIdx].message ?? ''}${prefix}${content}`;
+          } else {
+            all.push({ message: content, type: 'apiMessage' });
+          }
+          addChatMessage(all);
+          return all;
+        });
+
         const getName = botProps.observersConfig?.fetchPropName;
         const elements: any[] = [];
         for (const item of propertyIds) {
@@ -970,13 +934,12 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
               const res = await getName(item.prop_id);
               name = typeof res === 'string' ? res : String(res ?? '');
             }
-          } catch (e) {
-            // ignore and keep empty name
-          }
+          } catch (e) { /* ignored */ }
           const label = `[${item.prop_id}] ${name}`.trim();
           elements.push({ type: 'choose-one-item', label, prop_field: item.prop_field, prop_id: item.prop_id });
         }
-        // Add skip button
+        
+        // 건너뛰기 버튼 추가
         elements.push({ type: 'choose-one-skip', label: '건너뛰기', prop_field: 'skip' });
 
         setMessages((prev) => {
@@ -996,57 +959,34 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
     if (parsedAction?.action === 'search') {
       const data: any = parsedAction.data || {};
-      const comment: string = data?.comment ?? '';
+      console.log("search: ", data);
 
-      // Clear choose_one_property cache when a 'search' action is triggered
+      // 속성 선택 캐쉬 초기화
       setChooseOnePropertyCache({});
 
-      // Append the search comment to the current AI message (no new message)
-      setMessages((prev) => {
-        const all = [...cloneDeep(prev)];
-        if (all.length > 0) {
-          const lastIdx = all.length - 1;
-          if (all[lastIdx].type === 'apiMessage') {
-            const prefix = all[lastIdx].message && all[lastIdx].message.length > 0 ? '\n\n' : '';
-            all[lastIdx].message = `${all[lastIdx].message ?? ''}${prefix}${comment}\n\n`;
-          } else {
-            // Fallback: create a new AI message if the last one isn't apiMessage
-            all.push({ message: comment + "\n\n", type: 'apiMessage' });
-          }
-        } else {
-          all.push({ message: comment + '\n\n', type: 'apiMessage' });
-        }
-        addChatMessage(all);
-        return all;
-      });
-
-      // Indicate loading while applySearch is running
       setLoading(true);
 
-      // Call applySearch observer and send result back without creating a user message
+      // applySearch 호출 후 결과 전송
       (async () => {
         let humanInput: any = { ok: false, error: 'applySearch not implemented' };
         try {
           const applySearchFn = botProps.observersConfig?.applySearch;
           if (typeof applySearchFn === 'function') {
-            const res = await applySearchFn(parsedAction.data);
+            const res = await applySearchFn(data);
             if (res && typeof res === 'object' && 'ok' in res) humanInput = res;
             else humanInput = { ok: true };
           }
         } catch (e: any) {
           humanInput = { ok: false, error: e?.message ?? 'Unknown error' };
-        } finally {
-          // no-op here; we will set loading false after submitting the server response
         }
 
         await handleSubmit('', parsedAction, humanInput, true);
-        // Stop loading after the server response has been appended
+
         setLoading(false);
       })();
       return;
     }
 
-    // Default behavior: attach action to the last AI message
     setMessages((data) => {
       const updated = data.map((item, i) => {
         if (i === data.length - 1) {
@@ -1657,27 +1597,22 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       return;
     }
 
-    // Custom action: choose_one_property
     if (action && (action as any).action === 'choose_one_property') {
-      // Cache the user's selection within the session
       try {
         const key = (action as any)?.data?.property_value ?? '';
         if (key) {
           const choice = elem?.prop_field ?? 'skip';
           setChooseOnePropertyCache((prev) => ({ ...prev, [key]: choice }));
         }
-      } catch (e) {
-        // ignore cache errors
-      }
+      } catch (e) { /* ignore */ }
 
-      // Append the selected property label (or skip) to the current AI message
       setMessages((prev) => {
         const all = [...cloneDeep(prev)];
         if (all.length > 0) {
           const lastIdx = all.length - 1;
           if (all[lastIdx].type === 'apiMessage') {
             const prefix = all[lastIdx].message && all[lastIdx].message.length > 0 ? '\n\n' : '';
-            all[lastIdx].message = `${all[lastIdx].message ?? ''}${prefix}${elem?.label ?? '건너뛰기'} ✔️`;
+            all[lastIdx].message = `${all[lastIdx].message ?? ''}${prefix}${elem?.label ?? '건너뛰기'} ✔️\n\n`;
           }
         }
         addChatMessage(all);
@@ -1685,18 +1620,15 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       });
 
       const humanInput = { ok: true, data: { choice: elem?.prop_field ?? null } };
-      // Do not create a user message; auto-submit with the selected choice
-      handleSubmit('', action, humanInput, true);
+      await handleSubmit('', action, humanInput, true);
       return;
     }
 
-    // Default behavior
-    handleSubmit(elem.label, action);
+    await handleSubmit(elem.label, action);
   };
 
   const clearChat = () => {
     try {
-      // Clear session caches
       setChooseOnePropertyCache({});
       removeLocalStorageChatHistory(props.chatflowid);
       setChatId(
@@ -2448,14 +2380,16 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                           showAvatar={props.botMessage?.showAvatar}
                           avatarLoadingSrc={props.botMessage?.avatarLoadingSrc}
                           avatarSrc={props.botMessage?.avatarSrc}
+                          isAppending={message.message.trim() !== ''}
                         />
                       )}
-                      {message.type === 'apiMessage' && message.message.trim() === '' && loading() && index() === messages().length - 1 && (
+                      {message.type === 'apiMessage' && loading() && index() === messages().length - 1 && (
                         <LoadingBubble
                           calledTools={calledTools()}
                           showAvatar={props.botMessage?.showAvatar}
                           avatarLoadingSrc={props.botMessage?.avatarLoadingSrc}
                           avatarSrc={props.botMessage?.avatarSrc}
+                          isAppending={message.message.trim() !== ''}
                         />
                       )}
                     </>

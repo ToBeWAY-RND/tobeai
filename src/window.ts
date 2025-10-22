@@ -13,6 +13,14 @@ type BotProps = {
 
 let elementUsed: Element | undefined;
 
+const dispatchBotEvent = (type: 'flowise:open' | 'flowise:close' | 'flowise:toggle') => {
+  elementUsed?.dispatchEvent(new CustomEvent(type, { bubbles: true }));
+};
+
+export const open = () => dispatchBotEvent('flowise:open');
+export const close = () => dispatchBotEvent('flowise:close');
+export const toggle = () => dispatchBotEvent('flowise:toggle');
+
 export const initFull = (props: BotProps & { id?: string }) => {
   destroy();
   const fullElement = props.id ? document.getElementById(props.id) : document.querySelector('flowise-fullchatbot');
@@ -37,6 +45,9 @@ type Chatbot = {
   initFull: typeof initFull;
   init: typeof init;
   destroy: typeof destroy;
+  open: typeof open;
+  close: typeof close;
+  toggle: typeof toggle;
 };
 
 declare const window:
@@ -49,6 +60,9 @@ export const parseChatbot = () => ({
   initFull,
   init,
   destroy,
+  open,
+  close,
+  toggle,
 });
 
 export const injectChatbotInWindow = (bot: Chatbot) => {

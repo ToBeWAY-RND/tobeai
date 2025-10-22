@@ -54,6 +54,33 @@ export const Bubble = (props: BubbleProps) => {
     };
   });
 
+  const hideButton = (bubbleProps.theme as any)?.button?.hideButton ?? false;
+  const externalTriggerElementId: string | undefined = (bubbleProps.theme as any)?.button?.externalTriggerElementId;
+
+  createEffect(() => {
+    const onOpen = () => openBot();
+    const onClose = () => closeBot();
+    const onToggle = () => toggleBot();
+    window.addEventListener('flowise:open', onOpen);
+    window.addEventListener('flowise:close', onClose);
+    window.addEventListener('flowise:toggle', onToggle);
+    return () => {
+      window.removeEventListener('flowise:open', onOpen);
+      window.removeEventListener('flowise:close', onClose);
+      window.removeEventListener('flowise:toggle', onToggle);
+    };
+  });
+
+  // Attach to external trigger element by id, if provided
+  createEffect(() => {
+    if (!externalTriggerElementId) return;
+    const el = document.getElementById(externalTriggerElementId);
+    if (!el) return;
+    const handler = () => toggleBot();
+    el.addEventListener('click', handler);
+    return () => el.removeEventListener('click', handler);
+  });
+
   const showTooltip = bubbleProps.theme?.tooltip?.showTooltip ?? false;
 
   return (
@@ -62,25 +89,29 @@ export const Bubble = (props: BubbleProps) => {
         <style>{props.theme?.customCSS}</style>
       </Show>
       <style>{styles}</style>
-      <Tooltip
-        showTooltip={showTooltip && !isBotOpened()}
-        position={buttonPosition()}
-        buttonSize={buttonSize}
-        tooltipMessage={bubbleProps.theme?.tooltip?.tooltipMessage}
-        tooltipBackgroundColor={bubbleProps.theme?.tooltip?.tooltipBackgroundColor}
-        tooltipTextColor={bubbleProps.theme?.tooltip?.tooltipTextColor}
-        tooltipFontSize={bubbleProps.theme?.tooltip?.tooltipFontSize} // Set the tooltip font size
-      />
-      <BubbleButton
-        {...bubbleProps.theme?.button}
-        toggleBot={toggleBot}
-        isBotOpened={isBotOpened()}
-        setButtonPosition={setButtonPosition}
-        dragAndDrop={bubbleProps.theme?.button?.dragAndDrop ?? false}
-        autoOpen={bubbleProps.theme?.button?.autoWindowOpen?.autoOpen ?? false}
-        openDelay={bubbleProps.theme?.button?.autoWindowOpen?.openDelay}
-        autoOpenOnMobile={bubbleProps.theme?.button?.autoWindowOpen?.autoOpenOnMobile ?? false}
-      />
+      <Show when={!hideButton}>
+        <Tooltip
+          showTooltip={showTooltip && !isBotOpened()}
+          position={buttonPosition()}
+          buttonSize={buttonSize}
+          tooltipMessage={bubbleProps.theme?.tooltip?.tooltipMessage}
+          tooltipBackgroundColor={bubbleProps.theme?.tooltip?.tooltipBackgroundColor}
+          tooltipTextColor={bubbleProps.theme?.tooltip?.tooltipTextColor}
+          tooltipFontSize={bubbleProps.theme?.tooltip?.tooltipFontSize} // Set the tooltip font size
+        />
+      </Show>
+      <Show when={!hideButton}>
+        <BubbleButton
+          {...bubbleProps.theme?.button}
+          toggleBot={toggleBot}
+          isBotOpened={isBotOpened()}
+          setButtonPosition={setButtonPosition}
+          dragAndDrop={bubbleProps.theme?.button?.dragAndDrop ?? false}
+          autoOpen={bubbleProps.theme?.button?.autoWindowOpen?.autoOpen ?? false}
+          openDelay={bubbleProps.theme?.button?.autoWindowOpen?.openDelay}
+          autoOpenOnMobile={bubbleProps.theme?.button?.autoWindowOpen?.autoOpenOnMobile ?? false}
+        />
+      </Show>
       <div
         part="bot"
         style={{
@@ -96,7 +127,7 @@ export const Bubble = (props: BubbleProps) => {
           'background-position': 'center',
           'background-repeat': 'no-repeat',
           'z-index': 42424242,
-          bottom: `${Math.min(buttonPosition().bottom + buttonSize + 10, window.innerHeight - chatWindowBottom)}px`,
+          bottom: hideButton ? `${buttonPosition().bottom}px` : `${Math.min(buttonPosition().bottom + buttonSize + 10, window.innerHeight - chatWindowBottom)}px`,
           right: `${Math.max(0, Math.min(buttonPosition().right, window.innerWidth - (bubbleProps.theme?.chatWindow?.width ?? 410) - 10))}px`,
         }}
         class={

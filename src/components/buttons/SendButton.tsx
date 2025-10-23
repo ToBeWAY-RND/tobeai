@@ -30,7 +30,7 @@ export const SendButton = (props: SendButtonProps) => {
 export const DeleteButton = (props: SendButtonProps) => {
   // Check if <flowise-fullchatbot> is present in the DOM
   const isFullChatbot = document.querySelector('flowise-fullchatbot') !== null;
-  const paddingClass = isFullChatbot ? 'px-2' : 'px-12';
+  const paddingClass = 'px-2'; // isFullChatbot ? 'px-2' : 'px-12';
 
   return (
     <button
@@ -46,6 +46,32 @@ export const DeleteButton = (props: SendButtonProps) => {
     >
       <Show when={!props.isLoading} fallback={<Spinner class="text-white" />}>
         <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAGQSURBVHgB7VTLTcNAEJ1d2+KIJRKJGynB+XAmJaQD6IBwQwLiNYgzoYJQAlSQ5IpIDB2EExL44ALiHXb8gUhZbCOI4JAnrbW/eW81njcAa/w1WNGFytl0Dzh21MUOANZoDwEeaURzLsLLxvPH3d7EDc6bXikBu+vb5qZ0GWAXcoDA+oHXPCJyxlC8eS1WKJCQR0N16KhliMj6wOU4ELsjOq+KewfQOFT0B2lISGE0KSVQcSdX6ctnpsXbL6efaVjEtvBrEUZ+Rq4T4EuvP/ZrWVryyAlzKfcXyXVYEjA2pJtOb/LIs5xDAfjyBjrxhMlr+CG5FlX3AWnAL4HDiqERYDP6xgZbhYDKzW2ig20oiS13MkhTOygUAINlAl37ZLoDBaCy5qnhVFmLQoGg1xiT/ZVbbMuUozwRIrc25JDmFKMra32rEL5tYUSBcclK5QlD8v7rReOJ1vH/USlUpUqGtKnxBV6rruP6utkpERPLNbs5414o6uG3BDIk/YbcHRvQSYLYTFIxMHmXNcA1/i/eARk6pU1JgTB4AAAAAElFTkSuQmCC" />
+      </Show>
+    </button>
+  );
+};
+
+export const CloseButton = (props: SendButtonProps & { title?: string }) => {
+  const paddingClass = 'px-2';
+  return (
+    <button
+      type="button"
+      disabled={props.isDisabled || props.isLoading}
+      {...props}
+      class={
+        `py-2 ${paddingClass} justify-center font-semibold text-white focus:outline-none flex items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-100 transition-all filter hover:brightness-90 active:brightness-75 chatbot-button ` +
+        props.class
+      }
+      style={{ background: 'transparent', border: 'none' }}
+      title={props.title ?? 'Close Chat'}
+    >
+      <Show when={!props.isLoading} fallback={<Spinner class="text-white" />}>
+        <svg viewBox="0 0 24 24" width="24" height="24">
+          <path
+            fill={props.sendButtonColor || '#ffffff'}
+            d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"
+          />
+        </svg>
       </Show>
     </button>
   );

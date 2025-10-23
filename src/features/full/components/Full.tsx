@@ -95,6 +95,9 @@ export const Full = (props: FullProps, { element }: { element: HTMLElement }) =>
             renderHTML={props.theme?.chatWindow?.renderHTML}
             gptModels={props.theme?.chatWindow?.gptModels}
             mdmModules={props.theme?.chatWindow?.mdmModules}
+            showCloseButton={props.theme?.chatWindow?.showCloseButton}
+            useObserverClose={props.theme?.chatWindow?.useObserverClose}
+            closeButtonColor={props.theme?.chatWindow?.closeButtonColor}
           />
         </div>
       </Show>

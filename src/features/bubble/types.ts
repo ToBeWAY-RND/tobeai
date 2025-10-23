@@ -88,6 +88,9 @@ export type ChatWindowTheme = {
   renderHTML?: boolean;
   gptModels?: ComboBoxTheme;
   mdmModules?: ComboBoxTheme;
+  showCloseButton?: boolean;
+  useObserverClose?: boolean;
+  closeButtonColor?: string;
 };
 
 export type ButtonTheme = {

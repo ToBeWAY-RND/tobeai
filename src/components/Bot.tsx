@@ -28,7 +28,7 @@ import {
 import { Badge } from './Badge';
 import { Popup, DisclaimerPopup } from '@/features/popup';
 import { Avatar } from '@/components/avatars/Avatar';
-import { DeleteButton, SendButton } from '@/components/buttons/SendButton';
+import { DeleteButton, SendButton, CloseButton } from '@/components/buttons/SendButton';
 import { FilePreview } from '@/components/inputs/textInput/components/FilePreview';
 import { CircleDotIcon, SparklesIcon, TrashIcon } from './icons';
 import { CancelButton } from './buttons/CancelButton';
@@ -152,6 +152,7 @@ export type observersConfigType = {
   observeSourceClick?: observerConfigType;
   observeMenuClick?: observerConfigType;
   observeMastClick?: observerConfigType;
+  observeCloseClick?: () => Promise<void>;
   fetchPropName?: (propId: string) => Promise<string> | string;
   applySearch?: (data: any) => Promise<{ ok: boolean; error?: string } | { ok: false; error: string } | any>;
 };
@@ -173,6 +174,7 @@ export type BotProps = {
   poweredByTextColor?: string;
   badgeBackgroundColor?: string;
   bubbleBackgroundColor?: string;
+  closeButtonColor?: string;
   bubbleTextColor?: string;
   showTitle?: boolean;
   showAgentMessages?: boolean;
@@ -194,6 +196,8 @@ export type BotProps = {
   dateTimeToggle?: DateTimeToggleTheme;
   renderHTML?: boolean;
   closeBot?: () => void;
+  showCloseButton?: boolean;
+  useObserverClose?: boolean;
 };
 
 export type LeadsConfig = {
@@ -2294,6 +2298,19 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
               >
                 <span style={{ 'font-family': 'Poppins, sans-serif' }}>Clear</span>
               </DeleteButton>
+              <Show when={props.showCloseButton && (botProps.observersConfig?.observeCloseClick || props.closeBot)}>
+                <CloseButton
+                  class="my-2"
+                  sendButtonColor={props.closeButtonColor}
+                  on:click={async () => {
+                    if (props.useObserverClose && botProps.observersConfig?.observeCloseClick) {
+                      await botProps.observersConfig.observeCloseClick();
+                    } else if (props.closeBot) {
+                      props.closeBot();
+                    }
+                  }}
+                />
+              </Show>
             </div>
           ) : null}
           <div class="flex flex-col w-full h-full justify-start z-0">

@@ -694,7 +694,7 @@ export const BotBubble = (props: Props) => {
             />
           )}
           {props.message.action && (
-            <div class={`px-4 py-2 ${props.message.action?.action === 'choose_one_property' ? 'flex flex-col space-y-2' : 'flex flex-row justify-start space-x-2'}`}>
+            <div class={`px-4 py-2 ${(props.message.action?.action === 'choose_one_property' || props.message.action?.action === 'choose_one_option') ? 'flex flex-col space-y-2' : 'flex flex-row justify-start space-x-2'}`}>
               <For each={props.message.action.elements || []}>
                 {(action) => {
                   return (

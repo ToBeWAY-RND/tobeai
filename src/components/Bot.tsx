@@ -90,6 +90,7 @@ export type IAction = {
   action?: string;
   id?: string;
   data?: any;
+  cacheKey?: string;
   elements?: Array<{
     type: string;
     label: string;
@@ -462,6 +463,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
   // Cache for choose_one_property answers within the current session
   const [chooseOnePropertyCache, setChooseOnePropertyCache] = createSignal<Record<string, string>>({});
+  const [chooseOneOptionCache, setChooseOneOptionCache] = createSignal<Record<string, string>>({});
 
   // drag & drop
   const [isDragActive, setIsDragActive] = createSignal(false);
@@ -959,11 +961,89 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       return;
     }
 
+    if (parsedAction?.action === 'choose_one_option') {
+      const data: any = parsedAction.data || {};
+
+      const sprintf = (s: string, ...args: string[]) => {
+        // Only %s works
+        let i = 0;
+        return s.replace(/%s/g, () => String(args[i++]));
+      }
+
+      const prompts = {
+        'PROP': "'%s'에 해당하는 속성을 선택해주세요",
+        'VALUE': "'%s' 속성에 들어갈 값을 선택해주세요",
+        'UNIT': "'%s' 속성에 사용할 단위를 선택해주세요"
+      }
+      type PromptKey = keyof typeof prompts;
+
+      const promptType = data?.prompt_type as PromptKey;
+      if (!promptType) return;
+
+      const promptArgs: Array<string> | undefined = data?.prompt_args;
+      if (!promptArgs || promptArgs.length == 0) return;
+
+      const prompt = sprintf(prompts[promptType], ...promptArgs);
+      const options = data?.options;
+      const addNull: boolean = data?.add_null ?? false;
+
+      if (!options || (options.length == 0 && !addNull)) return;
+
+      const cacheKey = promptType + ':' + promptArgs.join('|');
+
+      (async () => {
+        try {
+          const cached = chooseOneOptionCache()[cacheKey];
+          if (cached) {
+            const humanInput = { ok: true, data: { choice: cached } };
+            await handleSubmit('', parsedAction, humanInput, true);
+            return;
+          }
+        } catch (e) { /* ignored */ }
+
+        setMessages((prev) => {
+          const all = [...cloneDeep(prev)];
+          if (all.length > 0 && all[all.length - 1].type === 'apiMessage') {
+            const lastIdx = all.length - 1;
+            const prefix = all[lastIdx].message && all[lastIdx].message.length > 0 ? '\n\n' : '';
+            all[lastIdx].message = `${all[lastIdx].message ?? ''}${prefix}${prompt}`;
+          } else {
+            all.push({ message: prompt, type: 'apiMessage' });
+          }
+          addChatMessage(all);
+          return all;
+        });
+
+        if (addNull) {
+          // Null 버튼 추가
+          options.push({ type: '__NULL__', label: '값 없음' });
+        }
+
+        // 건너뛰기 버튼 추가
+        options.push({ type: 'skip', label: '건너뛰기' });
+
+        setMessages((prev) => {
+          const all = [...cloneDeep(prev)];
+          if (all.length > 0) {
+            const lastIdx = all.length - 1;
+            if (all[lastIdx].type === 'apiMessage') {
+              (all[lastIdx] as any).action = { ...parsedAction, elements: options, cacheKey: cacheKey } as IAction;
+            }
+          }
+          addChatMessage(all);
+          console.log(all);
+          return all;
+        });
+      })();
+      return;
+    }
+
     if (parsedAction?.action === 'search') {
       const data: any = parsedAction.data || {};
 
       // 속성 선택 캐쉬 초기화
       setChooseOnePropertyCache({});
+      setChooseOneOptionCache({});
 
       setLoading(true);
 
@@ -1625,12 +1705,41 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       return;
     }
 
+    if (action && (action as any).action === 'choose_one_option') {
+      if (action.cacheKey !== undefined && elem?.type !== undefined) {
+        const key: string = action.cacheKey;
+        const choice: string = elem?.type;
+        try {
+          setChooseOneOptionCache((prev) => ({ ...prev, [key]: choice }));
+        } catch (e) { /* ignore */ }
+      }
+
+      setMessages((prev) => {
+        const all = [...cloneDeep(prev)];
+        if (all.length > 0) {
+          const lastIdx = all.length - 1;
+          if (all[lastIdx].type === 'apiMessage') {
+            const prefix = all[lastIdx].message && all[lastIdx].message.length > 0 ? '\n\n' : '';
+            all[lastIdx].message = `${all[lastIdx].message ?? ''}${prefix}${elem?.label ?? '건너뛰기'} ✔️\n\n`;
+          }
+        }
+        addChatMessage(all);
+        return all;
+      });
+
+      const humanInput = { ok: true, data: { choice: elem?.type ?? null } };
+      await handleSubmit('', action, humanInput, true);
+      return;
+    }
+
+
     await handleSubmit(elem.label, action);
   };
 
   const clearChat = () => {
     try {
       setChooseOnePropertyCache({});
+      setChooseOneOptionCache({});
       removeLocalStorageChatHistory(props.chatflowid);
       setChatId(
         (props.chatflowConfig?.vars as any)?.customerId ? `${(props.chatflowConfig?.vars as any).customerId.toString()}+${uuidv4()}` : uuidv4(),

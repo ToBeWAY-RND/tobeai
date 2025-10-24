@@ -56,8 +56,9 @@ chatflowid::
         clearChatOnReload: false,
         starterPrompts: ["MDM 업무규칙?"],
         backgroundColor: "#F8F8F8",
-        closeButtonColor: "#000000",
+        closeButtonColor: "#343A40",
         showCloseButton: true,
+        useObserverClose: true,
         botMessage: {
           backgroundColor: "#FFFFFF",
           backgroundColorEmphasize: "#FFFFFF",
@@ -124,6 +125,11 @@ chatflowid::
       // The bot message stack has changed
       observeMenuClick: (menu) => {
         console.log('observeMenuClick', { menu });
+      },
+      observeCloseClick: () => {
+        if (parent.parent && parent.parent.closeToBeAI) {
+          parent.parent.closeToBeAI();
+        }
       },
     }
   })

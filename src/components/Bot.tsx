@@ -2291,7 +2291,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                 </div>)
               }
               <DeleteButton
-                sendButtonColor={props.bubbleTextColor}
+                sendButtonColor={props.closeButtonColor}
                 type="button"
                 isDisabled={messages().length === 1}
                 class="my-2"

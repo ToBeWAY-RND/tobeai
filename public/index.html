@@ -10,121 +10,127 @@ chatflowid::
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flowise Chatbot Widget</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flowise Chatbot Widget</title>
 </head>
 
 <body>
-    <div id="root"></div>
-    <script type="module">
-        import Chatbot from './web.js'
-        Chatbot.initFull({
-            chatflowid: 'MANUAL',    
-            apiHost: 'https://aiml.tobeway.com:8443',
-            chatflowConfig: {
-                vars: {
-                    mdmModule: 'MDM',
-                    aimlUrl:"https://aiml.tobeway.com:8443",
-                    gptModel:"gpt-4o-mini",
-                    langCode: "KO",
-                    mdmModule: "MDM",
-                    mdmUrl: "https://rnd.tobeway.com:8000/tbwapi",
-                    userId: "ksm",
-                    userToken: "gejDolc+90dtL1t+mszjAPT0bIMdgqHCplmFf66mJ9s="                    
-                }
-            },
-            theme: {
-                button: {
-                    backgroundColor: "#B5C2FF",
-                    right: 20,
-                    bottom: 20,
-                    size: 48,
-                    dragAndDrop: true,
-                    iconColor: "#000000",
-                    autoWindowOpen: {
-                        autoOpen: true,
-                        openDelay: 2,
-                        autoOpenOnMobile: false
-                    }
-                },
-                chatWindow: {
-                    width: '700',
-                    showTitle: true,
-                    showAgentMessages: false,
-                    title: "토비 AI",
-                    welcomeMessage: "안녕하세요 김신모님! 필요한 정보나 궁금한 점이 있다면 말씀해주세요. 함께 해결해드리겠습니다.",
-                    clearChatOnReload: false,
-                    starterPrompts: ["MDM 업무규칙?"], 
-                    botMessage: {
-                        backgroundColor: "#E3F2FD",
-                        backgroundColorEmphasize: "#DCF0FF",
-                        showAvatar: true,
-                        avatarSrc: "https://raw.githubusercontent.com/zahidkhawaja/langchain-chat-nextjs/main/public/parroticon.png",
-                        avatarLoadingSrc: "http://localhost:8080/web/tbwcore/images//icon/bot_loading.gif",
-                        avatarInfoSrc: "http://localhost:8080/web/tbwcore/images//icon/bot_info.png",
-                        avatarEmptySrc: "http://localhost:8080/web/tbwcore/images/icon/bot_empty.png"
-                    },
-                    userMessage: {
-                        backgroundColor: "#DDE3FF",
-                        textColor: '#474747'
-                    },
-                    textInput: {
-                        placeholder: "질문을 입력하세요.",
-                        backgroundColor: "#ffffff",
-                        textColor: "#303235",
-                        sendButtonColor: "#5473F9",
-                        autoFocus: true,
-                    },
-                    footer: {
-                        text: "",
-                        company: ""
-                    },
-                    gptModels: {
-                        label: "모델",
-                        defaultValue: "gpt-4o-mini",
-                        values: [
-                            { value: 'gpt-4o-mini', label: 'gpt-4o-mini' },
-                            { value: 'gpt-5-nano', label: 'gpt-5-nano' },
-                        ]
-                    },
-                    mdmModules: {
-                        label: "모듈",
-                        defaultValue: "MDM",
-                        values: [
-                        { value: 'MDM', label: 'MDM' },
-                        { value: 'DOM', label: 'DOM' },
-                        { value: 'DQM', label: 'DQM' },
-                        { value: 'META', label: 'META' },
-                        { value: 'DI', label: 'DI' },
-                        { value: 'SNOP', label: 'S&OP' },
-                        ]
-                    },
-                }                
-            },
-            observersConfig: {
-                // The bot message stack has changed
-                observeMessages: (messages) => {
-                    console.log({ messages });
-                },
-                // Source link has clicked
-                observeSourceClick: (source) => {
-                    //console.log(source);
-                    if (source && source.metadata) {
-                        //alert('PDF Viewer를 띄우겠습니다.' + source.metadata.solution + ' ' + source.metadata.solution + ' page');
-                    }
-                    console.log(source);
-                },
-                // The bot message stack has changed
-                observeMenuClick: (menu) => {
-                    console.log('observeMenuClick', { menu });
-                },
-            }         
-        })
-    </script>
-    <div id="chatbot-container">
-        <flowise-fullchatbot></flowise-fullchatbot>
-    </div>
+<div id="root"></div>
+<script type="module">
+  import Chatbot from './web.js'
+  Chatbot.initFull({
+    chatflowid: 'MANUAL',
+    apiHost: 'https://aiml.tobeway.com:8443',
+    chatflowConfig: {
+      vars: {
+        mdmModule: 'MDM',
+        aimlUrl:"https://aiml.tobeway.com:8443",
+        gptModel:"gpt-4o-mini",
+        langCode: "KO",
+        mdmUrl: "https://rnd.tobeway.com:8000/tbwapi",
+        userId: "ksm",
+        userToken: "gejDolc+90dtL1t+mszjAPT0bIMdgqHCplmFf66mJ9s="
+      }
+    },
+    theme: {
+      button: {
+        backgroundColor: "#F8F8F8",
+        right: 20,
+        bottom: 20,
+        size: 48,
+        dragAndDrop: true,
+        iconColor: "#000000",
+        autoWindowOpen: {
+          autoOpen: true,
+          openDelay: 2,
+          autoOpenOnMobile: false
+        }
+      },
+      chatWindow: {
+        width: '700',
+        showTitle: true,
+        showAgentMessages: false,
+        title: "토비 AI",
+        welcomeMessage: "안녕하세요 김신모님! 필요한 정보나 궁금한 점이 있다면 말씀해주세요. 함께 해결해드리겠습니다.",
+        clearChatOnReload: false,
+        starterPrompts: ["MDM 업무규칙?"],
+        backgroundColor: "#F8F8F8",
+        closeButtonColor: "#000000",
+        showCloseButton: true,
+        botMessage: {
+          backgroundColor: "#FFFFFF",
+          backgroundColorEmphasize: "#FFFFFF",
+          textColor: "#474747",
+          showAvatar: true,
+          avatarSrc: "https://rnd.tobeway.com:8000/web/tbwcore/images//icon/bot.png",
+          avatarLoadingSrc: "https://rnd.tobeway.com:8000/web/tbwcore/images//icon/bot_loading.gif",
+          avatarInfoSrc: "https://rnd.tobeway.com:8000/web/tbwcore/images//icon/bot_info.png",
+          avatarEmptySrc: "https://rnd.tobeway.com:8000/web/tbwcore/images/icon/bot_empty.png"
+        },
+        feedback: {
+          color: '#868E96'
+        },
+        userMessage: {
+          backgroundColor: "#F8CACA",
+          textColor: '#474747'
+        },
+        textInput: {
+          placeholder: "질문을 입력하세요.",
+          backgroundColor: "#FFFFFF",
+          textColor: "#D9D9D9",
+          sendButtonColor: "#2C3238",
+          autoFocus: true,
+        },
+        footer: {
+          text: "",
+          company: ""
+        },
+        gptModels: {
+          label: "모델",
+          defaultValue: "gpt-4o-mini",
+          values: [
+            { value: 'gpt-4o-mini', label: 'gpt-4o-mini' },
+            { value: 'gpt-5-nano', label: 'gpt-5-nano' },
+          ]
+        },
+        mdmModules: {
+          label: "모듈",
+          defaultValue: "MDM",
+          values: [
+            { value: 'MDM', label: 'MDM' },
+            { value: 'DOM', label: 'DOM' },
+            { value: 'DQM', label: 'DQM' },
+            { value: 'META', label: 'META' },
+            { value: 'DI', label: 'DI' },
+            { value: 'SNOP', label: 'S&OP' },
+          ]
+        },
+      }
+    },
+    observersConfig: {
+      // The bot message stack has changed
+      observeMessages: (messages) => {
+        console.log({ messages });
+      },
+      // Source link has clicked
+      observeSourceClick: (source) => {
+        //console.log(source);
+        if (source && source.metadata) {
+          //alert('PDF Viewer를 띄우겠습니다.' + source.metadata.solution + ' ' + source.metadata.solution + ' page');
+        }
+        console.log(source);
+      },
+      // The bot message stack has changed
+      observeMenuClick: (menu) => {
+        console.log('observeMenuClick', { menu });
+      },
+    }
+  })
+</script>
+<div id="chatbot-container">
+  <flowise-fullchatbot></flowise-fullchatbot>
+</div>
 </body>
 
 </html>

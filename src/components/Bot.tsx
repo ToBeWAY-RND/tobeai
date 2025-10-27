@@ -2568,6 +2568,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                           avatarLoadingSrc={props.botMessage?.avatarLoadingSrc}
                           avatarSrc={props.botMessage?.avatarSrc}
                           isAppending={message.message.trim() !== ''}
+                          fetchPropName={props.observersConfig?.fetchPropName}
                         />
                       )}
                     </>

@@ -9,6 +9,7 @@ type LoadingBubbleProps = {
   avatarLoadingSrc?: string;
   avatarSrc?: string;
   isAppending?: boolean;
+  fetchPropName?:(propId: string) => Promise<string> | string;
 };
 
 const LoadingDots = () => {
@@ -21,6 +22,21 @@ const LoadingDots = () => {
   });
   onCleanup(() => clearInterval(intervalId));
   return <span>{'.'.repeat(dots())}</span>;
+};
+
+const addChooseQueries = (items: any[], queries: Set<string>, fetchPropName: (propId: string) => Promise<string> | string) => {
+  for (const item of items) {
+    if (item.args?.org_property_id) {
+      let prop: string = item.args.org_property_id;
+      (async () => {
+        prop = await fetchPropName(prop);
+      })();
+
+      if (prop) {
+        queries.add(`'${prop}'`);
+      }
+    }
+  }
 };
 
 export const LoadingBubble = (props: LoadingBubbleProps) => {
@@ -125,23 +141,21 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
           parts.push(Array.from(queries).join(', ') + '에 대한 속성 식별 중');
         }
       } else if (name === "choose_one_enum") {
-        for (const item of items) {
-          if (item.args?.property_id) {
-            queries.add(`'${item.args.property_id}'`);
-          }
+        if (typeof props.fetchPropName === 'function') {
+          addChooseQueries(items, queries, props.fetchPropName);
         }
         if (queries.size > 0) {
           parts.push(Array.from(queries).join(', ') + '에 대한 속성값 식별 중');
         }
       } else if (name === "choose_one_unit") {
-        for (const item of items) {
-          if (item.args?.property_id) {
-            queries.add(`'${item.args.property_id}'`);
-          }
+        if (typeof props.fetchPropName === 'function') {
+          addChooseQueries(items, queries, props.fetchPropName);
         }
         if (queries.size > 0) {
           parts.push(Array.from(queries).join(', ') + '에 대한 단위 식별 중');
         }
+      } else if (name === "search") {
+        parts.push("검색 조건 받아오는 중");
       } else {
         parts.push(`'${name}' 호출 중`);
       }

@@ -434,6 +434,8 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
   const [isLeadSaved, setIsLeadSaved] = createSignal(false);
   const [leadEmail, setLeadEmail] = createSignal('');
   const [disclaimerPopupOpen, setDisclaimerPopupOpen] = createSignal(false);
+  const [calledTools, setCalledTools] = createSignal<any[]>([]);
+  const [showLoadingBubble, setShowLoadingBubble] = createSignal(false);
 
   const [openFeedbackDialog, setOpenFeedbackDialog] = createSignal(false);
   const [feedback, setFeedback] = createSignal('');
@@ -645,8 +647,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
   let hasSoundPlayed = false;
 
-    const [calledTools, setCalledTools] = createSignal<any[]>([]);
-
 
   const updateLastMessage = (text: string) => {
     setMessages((prevMessages) => {
@@ -676,8 +676,13 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         }
         if (changed && (!last.message || last.message.trim().length === 0)) {
           setLoading(true);
+          setShowLoadingBubble(true);
         }
 
+        if (last.message && last.message.trim().length > 0) {
+          setShowLoadingBubble(false);
+          setCalledTools([]);
+        }
       }
 
 
@@ -743,11 +748,10 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     });
   };
 
-  const updateLoadingCalledTools = (calledTools: any[]) => {
-    setCalledTools(Array.isArray(calledTools) ? calledTools : []);
+  const updateLoadingCalledTools = (tools: any[]) => {
+    setCalledTools(Array.isArray(tools) ? tools : []);
+    setShowLoadingBubble(true);
   };
-
-
 
   const updateLastMessageMenus = (menus: any[]) => {
     setMessages((prevMessages) => {
@@ -996,7 +1000,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           const cached = chooseOneOptionCache()[cacheKey];
           if (cached) {
             const humanInput = { ok: true, data: { choice: cached } };
-            await handleSubmit('', parsedAction, humanInput, true);
+            await handleSubmit('', parsedAction, humanInput, true, false);
             return;
           }
         } catch (e) { /* ignored */ }
@@ -1031,7 +1035,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
             }
           }
           addChatMessage(all);
-          console.log(all);
           return all;
         });
       })();
@@ -1045,7 +1048,21 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       setChooseOnePropertyCache({});
       setChooseOneOptionCache({});
 
+      updateLoadingCalledTools([{name: 'apply_search'}]);
+
       setLoading(true);
+
+      setMessages((prev) => {
+        const all = [...cloneDeep(prev)];
+        if (all.length > 0) {
+          const lastIdx = all.length - 1;
+          if (all[lastIdx].type === 'apiMessage') {
+            (all[lastIdx] as any).action = { ...parsedAction } as IAction;
+          }
+        }
+        addChatMessage(all);
+        return all;
+      });
 
       // applySearch 호출 후 결과 전송
       (async () => {
@@ -1062,8 +1079,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         }
 
         await handleSubmit('', parsedAction, humanInput, true);
-
-        setLoading(false);
+        setCalledTools([]);
       })();
       return;
     }
@@ -1104,6 +1120,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       addChatMessage(allMessages);
       return allMessages;
     });
+
     setLoading(false);
     setUserInput('');
     setUploadedFiles([]);
@@ -1115,13 +1132,17 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     setCookie('chatbotDisclaimer', 'true', 365); // Disclaimer accepted
   };
 
-  const promptClick = (prompt: string) => {
-    handleSubmit(prompt);
+  const promptClick = async (prompt: string) => {
+    (async () => {
+      await handleSubmit(prompt);
+    })();
   };
 
   const followUpPromptClick = (prompt: string) => {
     setFollowUpPrompts([]);
-    handleSubmit(prompt);
+    (async () => {
+      await handleSubmit(prompt);
+    })();
   };
 
   const updateMetadata = (data: any, input: string) => {
@@ -1165,7 +1186,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     }
   };
 
-  const fetchResponseFromEventStream = async (chatflowid: string, params: any) => {
+  const fetchResponseFromEventStream = async (chatflowid: string, params: any, noUserMessage?: boolean, finalSubmit?: boolean) => {
     const chatId = params.chatId;
     const input = params.question;
     params.streaming = true;
@@ -1198,10 +1219,12 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       },
       async onmessage(ev) {
         const payload = JSON.parse(ev.data);
+
+        let hasAction = false;
+
         switch (payload.event) {
           case 'start':
-            setCalledTools([]);
-            if (!(params?.action && params.action.action === 'search')) {
+            if (!(noUserMessage ?? false)) {
               setMessages((prevMessages) => {
                 const allMessages = [...cloneDeep(prevMessages)];
                 if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {
@@ -1211,6 +1234,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                 }
                 return allMessages;
               });
+              setCalledTools([]);
             }
             break;
           case 'token':
@@ -1260,6 +1284,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           case 'abort':
             abortMessage();
             await logMessageCompletion('abort', input);
+            setCalledTools([]);
             closeResponse();
             break;
           case 'end':
@@ -1271,22 +1296,41 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                 if (!allMessages[allMessages.length - 1].dateTime) {
                   allMessages[allMessages.length - 1].dateTime = new Date().toISOString();
                 }
+                const action = allMessages[allMessages.length - 1].action;
+                if (action && action.action === 'search') {
+                  hasAction = true;
+                }
               }
               addChatMessage(allMessages);
               return allMessages;
             });
             await logMessageCompletion('success', input);
-            setCalledTools([]);
+            if (!hasAction) {
+              setLoading(false);
+              setCalledTools([]);
+            }
             closeResponse();
             break;
         }
       },
       async onclose() {
+        let hasAction = false;
+        if (messages().length > 0) {
+          const last = messages()[messages().length - 1];
+          if (last.action?.action === 'search') {
+            hasAction = true;
+          }
+        }
+        if (!hasAction) {
+          setLoading(false);
+          setCalledTools([]);
+        }
         closeResponse();
       },
       onerror(err) {
         console.error('EventSource Error: ', err);
         logMessageCompletion('error', input).catch((e) => console.error('logMessageCompletion failed', e));
+        setLoading(false);
         closeResponse();
         throw err;
       },
@@ -1294,11 +1338,9 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
   };
 
   const closeResponse = () => {
-    setLoading(false);
     setUserInput('');
     setUploadedFiles([]);
-    hasSoundPlayed = false;
-    setCalledTools([]);
+    hasSoundPlayed = false
     
     // Force BotBubble refresh by updating the last message
     setMessages((prevMessages) => {
@@ -1410,7 +1452,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
   };
 
   // Handle form submission
-  const handleSubmit = async (value: string | object, action?: IAction | undefined | null, humanInput?: any, noUserMessage?: boolean) => {
+  const handleSubmit = async (value: string | object, action?: IAction | undefined | null, humanInput?: any, noUserMessage?: boolean, finalSubmit?: boolean) => {
     if (!action && typeof value === 'string' && value.trim() === '') {
       const containsFile = previews().filter((item) => !item.mime.startsWith('image') && item.type !== 'audio').length > 0;
       if (!previews().length || (previews().length && containsFile)) {
@@ -1427,6 +1469,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     }
 
     setLoading(true);
+    setShowLoadingBubble(true);
     // reset called tools indicators for new streaming response
     setCalledTools([]);
     scrollToBottom();
@@ -1478,7 +1521,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     if (humanInput) body.humanInput = humanInput;
 
     if (isChatFlowAvailableToStream()) {
-      fetchResponseFromEventStream(props.chatflowid, body);
+      fetchResponseFromEventStream(props.chatflowid, body, noUserMessage, finalSubmit);
     } else {
       const result = await sendMessageQuery({
         chatflowid: props.chatflowid,
@@ -1499,7 +1542,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
         playReceiveSound();
 
-        if (noUserMessage || (action && (action as any).action === 'search')) {
+        if (noUserMessage) {
           // Append to the last AI message instead of creating a new one
           setMessages((prev) => {
             const all = [...cloneDeep(prev)];
@@ -1528,11 +1571,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           });
 
           updateMetadata(data, '');
-
-          setLoading(false);
-          setUserInput('');
-          setUploadedFiles([]);
-          scrollToBottom();
         } else {
           const newMessage = {
             message: text,
@@ -1583,12 +1621,14 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           await logMessageCompletion('success', typeof value === 'string' ? (value as string) : undefined, newMessage);
 
           updateMetadata(data, value);
-
-          setLoading(false);
-          setUserInput('');
-          setUploadedFiles([]);
-          scrollToBottom();
         }
+
+        if (finalSubmit ?? true) {
+          setLoading(false);
+        }
+        setUserInput('');
+        setUploadedFiles([]);
+        scrollToBottom();
       }
       if (result.error) {
         const error = result.error;
@@ -1728,7 +1768,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       });
 
       const humanInput = { ok: true, data: { choice: elem?.type ?? null } };
-      await handleSubmit('', action, humanInput, true);
+      await handleSubmit('', action, humanInput, true, false);
       return;
     }
 
@@ -2504,10 +2544,10 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                           showAvatar={props.botMessage?.showAvatar}
                           avatarLoadingSrc={props.botMessage?.avatarLoadingSrc}
                           avatarSrc={props.botMessage?.avatarSrc}
-                          isAppending={message.message.trim() !== ''}
+                          isAppending={false}
                         />
                       )}
-                      {message.type === 'apiMessage' && loading() && index() === messages().length - 1 && (
+                      {message.type === 'apiMessage' && loading() && index() === messages().length - 1 && showLoadingBubble() && (
                         <LoadingBubble
                           calledTools={calledTools()}
                           showAvatar={props.botMessage?.showAvatar}

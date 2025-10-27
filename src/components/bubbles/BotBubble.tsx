@@ -608,11 +608,17 @@ export const BotBubble = (props: Props) => {
       return '';
     }
   };
-  const getAvatarSrcSrc = () => {
+  const getAvatarSrc = () => {
     if (props?.isLoading && props.message.type === 'apiMessage') {
       return props.avatarLoadingSrc;
     } else if (props.message.sourceDocuments) {
       if (props.message.sourceDocuments.length === 0) {
+        return props.avatarEmptySrc;
+      } else {
+        return props.avatarInfoSrc;
+      }
+    } else if (props.message.mastSearches) {
+      if (props.message.mastSearches.length === 0) {
         return props.avatarEmptySrc;
       } else {
         return props.avatarInfoSrc;
@@ -625,7 +631,7 @@ export const BotBubble = (props: Props) => {
     <div>
       <div class="flex flex-row justify-start mb-2 items-start host-container" style={{ 'margin-right': '50px' }}>
         <Show when={props.showAvatar}>
-          <Avatar initialAvatarSrc={getAvatarSrcSrc()} />
+          <Avatar initialAvatarSrc={getAvatarSrc()} />
         </Show>
         <div class="flex flex-col justify-start">
           {props.showAgentMessages &&
@@ -693,7 +699,7 @@ export const BotBubble = (props: Props) => {
               }}
             />
           )}
-          {props.message.action && (
+          {props.message.action && props.message.action?.action !== 'search' && (
             <div class={`px-4 py-2 ${(props.message.action?.action === 'choose_one_property' || props.message.action?.action === 'choose_one_option') ? 'flex flex-col space-y-2' : 'flex flex-row justify-start space-x-2'}`}>
               <For each={props.message.action.elements || []}>
                 {(action) => {

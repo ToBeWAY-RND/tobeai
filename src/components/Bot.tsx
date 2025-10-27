@@ -1000,7 +1000,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           const cached = chooseOneOptionCache()[cacheKey];
           if (cached) {
             const humanInput = { ok: true, data: { choice: cached } };
-            await handleSubmit('', parsedAction, humanInput, true, false);
+            await handleSubmit('', parsedAction, humanInput, true);
             return;
           }
         } catch (e) { /* ignored */ }
@@ -1078,8 +1078,16 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           humanInput = { ok: false, error: e?.message ?? 'Unknown error' };
         }
 
-        await handleSubmit('', parsedAction, humanInput, true);
-        setCalledTools([]);
+        setMessages((prevMessages) => {
+          const allMessages = [...cloneDeep(prevMessages)];
+          if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {
+            allMessages[allMessages.length - 1].action = null;
+          }
+          addChatMessage(allMessages);
+          return allMessages;
+        });
+
+        await handleSubmit('', parsedAction, humanInput, true, true);
       })();
       return;
     }
@@ -1186,7 +1194,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     }
   };
 
-  const fetchResponseFromEventStream = async (chatflowid: string, params: any, noUserMessage?: boolean, finalSubmit?: boolean) => {
+  const fetchResponseFromEventStream = async (chatflowid: string, params: any, noUserMessage?: boolean, searchCompleted?: boolean) => {
     const chatId = params.chatId;
     const input = params.question;
     params.streaming = true;
@@ -1321,9 +1329,17 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
             hasAction = true;
           }
         }
-        if (!hasAction) {
+        if (!hasAction || searchCompleted) {
           setLoading(false);
           setCalledTools([]);
+        }
+
+        if (searchCompleted) {
+          if (props.useObserverClose && botProps.observersConfig?.observeCloseClick) {
+            await botProps.observersConfig.observeCloseClick();
+          } else if (props.closeBot) {
+            props.closeBot();
+          }
         }
         closeResponse();
       },
@@ -1452,7 +1468,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
   };
 
   // Handle form submission
-  const handleSubmit = async (value: string | object, action?: IAction | undefined | null, humanInput?: any, noUserMessage?: boolean, finalSubmit?: boolean) => {
+  const handleSubmit = async (value: string | object, action?: IAction | undefined | null, humanInput?: any, noUserMessage?: boolean, searchCompleted?: boolean) => {
     if (!action && typeof value === 'string' && value.trim() === '') {
       const containsFile = previews().filter((item) => !item.mime.startsWith('image') && item.type !== 'audio').length > 0;
       if (!previews().length || (previews().length && containsFile)) {
@@ -1521,7 +1537,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     if (humanInput) body.humanInput = humanInput;
 
     if (isChatFlowAvailableToStream()) {
-      fetchResponseFromEventStream(props.chatflowid, body, noUserMessage, finalSubmit);
+      fetchResponseFromEventStream(props.chatflowid, body, noUserMessage, searchCompleted);
     } else {
       const result = await sendMessageQuery({
         chatflowid: props.chatflowid,
@@ -1623,9 +1639,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           updateMetadata(data, value);
         }
 
-        if (finalSubmit ?? true) {
-          setLoading(false);
-        }
+        setLoading(false);
         setUserInput('');
         setUploadedFiles([]);
         scrollToBottom();
@@ -1768,7 +1782,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       });
 
       const humanInput = { ok: true, data: { choice: elem?.type ?? null } };
-      await handleSubmit('', action, humanInput, true, false);
+      await handleSubmit('', action, humanInput, true);
       return;
     }
 

@@ -115,6 +115,33 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
         if (queries.size > 0) {
           parts.push(Array.from(queries).join(', ') + '에 대한 유사도 검색 중');
         }
+      } else if (name === "choose_one_property") {
+        for (const item of items) {
+          if (item.args?.property_value) {
+            queries.add(`'${item.args.property_value}'`);
+          }
+        }
+        if (queries.size > 0) {
+          parts.push(Array.from(queries).join(', ') + '에 대한 속성 식별 중');
+        }
+      } else if (name === "choose_one_enum") {
+        for (const item of items) {
+          if (item.args?.property_id) {
+            queries.add(`'${item.args.property_id}'`);
+          }
+        }
+        if (queries.size > 0) {
+          parts.push(Array.from(queries).join(', ') + '에 대한 속성값 식별 중');
+        }
+      } else if (name === "choose_one_unit") {
+        for (const item of items) {
+          if (item.args?.property_id) {
+            queries.add(`'${item.args.property_id}'`);
+          }
+        }
+        if (queries.size > 0) {
+          parts.push(Array.from(queries).join(', ') + '에 대한 단위 식별 중');
+        }
       } else {
         parts.push(`'${name}' 호출 중`);
       }

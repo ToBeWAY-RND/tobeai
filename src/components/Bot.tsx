@@ -1334,13 +1334,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           setCalledTools([]);
         }
 
-        if (searchCompleted) {
-          if (props.useObserverClose && botProps.observersConfig?.observeCloseClick) {
-            await botProps.observersConfig.observeCloseClick();
-          } else if (props.closeBot) {
-            props.closeBot();
-          }
-        }
         closeResponse();
       },
       onerror(err) {

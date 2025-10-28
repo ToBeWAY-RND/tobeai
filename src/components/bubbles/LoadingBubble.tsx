@@ -25,18 +25,16 @@ const LoadingDots = () => {
 };
 
 const addChooseQueries = (items: any[], queries: Set<string>, fetchPropName: (propId: string) => Promise<string> | string) => {
-  for (const item of items) {
-    if (item.args?.org_property_id) {
-      let prop: string = item.args.org_property_id;
-      (async () => {
-        prop = await fetchPropName(prop);
-      })();
-
-      if (prop) {
-        queries.add(`'${prop}'`);
+  (async () => {
+    for (const item of items) {
+      if (item.args?.org_property_id) {
+        const prop = await fetchPropName(item.args.org_property_id);
+        if (prop) {
+          queries.add(`'${prop}'`);
+        }
       }
     }
-  }
+  })();
 };
 
 export const LoadingBubble = (props: LoadingBubbleProps) => {
@@ -166,7 +164,7 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
   return (
   <div class="flex justify-start mb-2 items-start animate-fade-in host-container" style={{ 'background-color': 'transparent' }}>
     <Show when={props.showAvatar}>
-      <Show when={!props.isAppending} fallback={<div class={(isMobile() ? 'w-6 h-6' : 'w-10 h-10') + ' rounded-full flex-shrink-0'} aria-hidden="true" />}>
+      <Show when={!props.isAppending} fallback={<div class={(isMobile() ? 'w-6 h-6' : 'w-10 h-10') + ' rounded-full flex-shrink-0'} />}>
         <Avatar initialAvatarSrc={props.avatarLoadingSrc || props.avatarSrc} />
       </Show>
     </Show>

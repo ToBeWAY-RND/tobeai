@@ -125,9 +125,9 @@ export const Bubble = (props: BubbleProps) => {
         style={{
           height: bubbleProps.theme?.chatWindow?.height ? `${bubbleProps.theme?.chatWindow?.height.toString()}px` : `calc(100% - ${bubbleProps.theme?.chatWindow?.antiHeight?.toString() || '50'}px)`,
           width: bubbleProps.theme?.chatWindow?.width ? `${bubbleProps.theme?.chatWindow?.width.toString()}px` : undefined,
-          transition: 'transform 200ms cubic-bezier(0, 1.2, 1, 1), opacity 150ms ease-out',
+          transition: isBotOpened() ? 'opacity 150ms ease-out' : 'opacity 300ms ease-in',
           'transform-origin': 'bottom right',
-          transform: isBotOpened() ? 'scale3d(1, 1, 1)' : 'scale3d(0, 0, 1)',
+          transform: 'none',
           'box-shadow': '0 4px 4px 0 rgba(0, 0, 0, 0.25)',
           'background-color': bubbleProps.theme?.chatWindow?.backgroundColor || '#ffffff',
           'background-image': bubbleProps.theme?.chatWindow?.backgroundImage ? `url(${bubbleProps.theme?.chatWindow?.backgroundImage})` : 'none',

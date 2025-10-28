@@ -630,7 +630,7 @@ export const BotBubble = (props: Props) => {
   };
   return (
     <div>
-      <div class="flex flex-row justify-start mb-2 items-start host-container" style={{ 'margin-right': ((props.showUserAvartar ?? false) ? '50px' : '8px') }}>
+      <div class="flex flex-row justify-start mb-2 items-start host-container" style={{ 'margin-right': ((props.showUserAvartar ?? false) ? '50px' : (props.showAvatar ? '20px' : '8px')) }}>
         <Show when={props.showAvatar}>
           <Avatar initialAvatarSrc={getAvatarSrc()} />
         </Show>

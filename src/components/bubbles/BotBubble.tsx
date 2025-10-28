@@ -40,6 +40,7 @@ type Props = {
   observeMenuClick?: (menu: any) => void;
   observeMastClick?: (mastid: any) => void;
   langCode?: string;
+  showUserAvartar?: boolean;
 };
 
 const defaultBackgroundColor = '#f7f8ff';
@@ -629,7 +630,7 @@ export const BotBubble = (props: Props) => {
   };
   return (
     <div>
-      <div class="flex flex-row justify-start mb-2 items-start host-container" style={{ 'margin-right': '50px' }}>
+      <div class="flex flex-row justify-start mb-2 items-start host-container" style={{ 'margin-right': ((props.showUserAvartar ?? false) ? '50px' : '8px') }}>
         <Show when={props.showAvatar}>
           <Avatar initialAvatarSrc={getAvatarSrc()} />
         </Show>

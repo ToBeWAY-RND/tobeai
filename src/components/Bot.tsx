@@ -2316,6 +2316,23 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     }),
   );
 
+  const ModelComboBox = () => (
+    <div class="flex items-center px-3">
+      <ComboBox
+        options={props.gptModels?.values || []}
+        label={props.gptModels?.label}
+        defaultValue={props.gptModels?.defaultValue}
+        onChange={(value: string) => {
+          // 선택된 모델델 값을 chatflowConfig에 저장
+          if (botProps.chatflowConfig?.vars) {
+            (botProps.chatflowConfig.vars as any).gptModel = value;
+          }
+        }}
+        style={{ width: 'auto' }}
+      />
+    </div>
+  );
+
   const previewDisplay = (item: FilePreview) => {
     if (item.mime.startsWith('image/')) {
       return (
@@ -2399,13 +2416,10 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
           {props.showTitle ? (
             <div
-              class="flex flex-row items-center w-full h-[50px] absolute top-0 left-0 z-10"
+              class={'flex flex-row items-center w-full ' + (props.isFullPage ? 'h-[50px]' : 'h-[35px]') + ' absolute top-0 left-0 z-10'}
               style={{
                 background: props.titleBackgroundColor || props.bubbleBackgroundColor || defaultTitleBackgroundColor,
                 color: props.titleTextColor || props.bubbleTextColor || defaultBackgroundColor,
-                'border-top-left-radius': props.isFullPage ? '0px' : '6px',
-                'border-top-right-radius': props.isFullPage ? '0px' : '6px',
-                'border-bottom': '1px solid #CED4DA',
               }}
             >
               <Show when={props.titleAvatarSrc}>
@@ -2415,29 +2429,19 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                 </>
               </Show>
               <Show when={props.title}>
-                <span class="px-3 whitespace-pre-wrap font-semibold max-w-full">{props.title}</span>
+                <span
+                  class={'px-3 ' + (props.isFullPage ? 'whitespace-pre-wrap' : 'whitespace-nowrap overflow-hidden') + ' font-semibold max-w-full'}
+                >
+                  {props.title}
+                </span>
               </Show>
 
               <div style={{ flex: 1 }} />
-              <div class="flex items-center px-3">
-                <ComboBox
-                  options={props.gptModels?.values || []}
-                  label={props.gptModels?.label}
-                  defaultValue={props.gptModels?.defaultValue}
-                  onChange={(value: string) => {
-                    // 선택된 모델델 값을 chatflowConfig에 저장
-                    if (botProps.chatflowConfig?.vars) {
-                      (botProps.chatflowConfig.vars as any).gptModel = value;
-                    }
-                  }}
-                  style={{ width: 'auto' }}
-                />
-              </div>
-              {
-                props.mdmModules != undefined
-                && props.mdmModules.values != undefined
-                && props.mdmModules.values.length > 0
-                && (<div class="flex items-center px-3">
+              <Show when={props.isFullPage}>
+                <ModelComboBox />
+              </Show>
+              {props.mdmModules != undefined && props.mdmModules.values != undefined && props.mdmModules.values.length > 0 && (
+                <div class="flex items-center px-3">
                   <ComboBox
                     options={props.mdmModules?.values || []}
                     label={props.mdmModules?.label}
@@ -2451,13 +2455,14 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                     }}
                     style={{ width: '120px', 'margin-left': '2px' }}
                   />
-                </div>)
-              }
+                </div>
+              )}
               <DeleteButton
                 sendButtonColor={props.closeButtonColor}
                 type="button"
                 isDisabled={messages().length === 1}
                 class="my-2"
+                showCloseButton={!props.isFullPage && props.showCloseButton}
                 on:click={clearChat}
               >
                 <span style={{ 'font-family': 'Poppins, sans-serif' }}>Clear</span>
@@ -2466,21 +2471,31 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                 <CloseButton
                   class="my-2"
                   sendButtonColor={props.closeButtonColor}
-                  on:click={async () => {
-                    if (props.useObserverClose && botProps.observersConfig?.observeCloseClick) {
-                      await botProps.observersConfig.observeCloseClick();
-                    } else if (props.closeBot) {
-                      props.closeBot();
-                    }
+                  showCloseButton={!props.isFullPage && props.showCloseButton}
+                  on:click={() => {
+                    (async () => {
+                      if (props.useObserverClose && botProps.observersConfig?.observeCloseClick) {
+                        await botProps.observersConfig.observeCloseClick();
+                      } else if (props.closeBot) {
+                        props.closeBot();
+                      }
+                    })();
                   }}
                 />
               </Show>
             </div>
           ) : null}
+          {props.showTitle && !props.isFullPage ? (
+            <div class="absolute top-[35px] left-0 right-0 z-10 flex items-center justify-end h-[40px] px-2">
+              <ModelComboBox />
+            </div>
+          ) : null}
           <div class="flex flex-col w-full h-full justify-start z-0">
             <div
               ref={chatContainer}
-              class="overflow-y-scroll flex flex-col flex-grow min-w-full w-full px-3 pt-[70px] relative scrollable-container chatbot-chat-view scroll-smooth"
+              class={
+                'overflow-y-scroll flex flex-col flex-grow min-w-full w-full px-3 ' + (props.isFullPage ? 'pt-[70px]' : 'pt-[91px]') + ' relative scrollable-container chatbot-chat-view scroll-smooth'
+              }
             >
               <For each={[...messages()]}>
                 {(message, index) => {
@@ -2532,6 +2547,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                           observeMenuClick={botProps.observersConfig?.observeMenuClick}
                           observeMastClick={botProps.observersConfig?.observeMastClick}
                           langCode={(botProps.chatflowConfig?.vars as any).langCode}
+                          showUserAvartar={props.userMessage?.showAvatar}
                         />
                       )}
                       {message.type === 'leadCaptureMessage' && leadsConfig()?.status && !getLocalStorageChatflow(props.chatflowid)?.lead && (
@@ -2692,6 +2708,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                   sendSoundLocation={props.textInput?.sendSoundLocation}
                   enableInputHistory={true}
                   maxHistorySize={10}
+                  isFullPage={props.isFullPage}
                 />
               )}
             </div>

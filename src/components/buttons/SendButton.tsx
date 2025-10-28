@@ -7,6 +7,8 @@ type SendButtonProps = {
   isDisabled?: boolean;
   isLoading?: boolean;
   disableIcon?: boolean;
+  width?: string;
+  showCloseButton?: boolean;
 } & JSX.ButtonHTMLAttributes<HTMLButtonElement>;
 
 export const SendButton = (props: SendButtonProps) => {
@@ -22,23 +24,20 @@ export const SendButton = (props: SendButtonProps) => {
       style={{ background: 'transparent', border: 'none' }}
     >
       <Show when={!props.isLoading} fallback={<Spinner class="text-white" />}>
-        <SendIcon color={props.sendButtonColor} class={'send-icon flex ' + (props.disableIcon ? 'hidden' : '')} />
+        <SendIcon color={props.sendButtonColor} width={props.width} class={'send-icon flex ' + (props.disableIcon ? 'hidden' : '')} />
       </Show>
     </button>
   );
 };
 export const DeleteButton = (props: SendButtonProps) => {
-  // Check if <flowise-fullchatbot> is present in the DOM
-  const isFullChatbot = document.querySelector('flowise-fullchatbot') !== null;
-  const paddingClass = 'px-2'; // isFullChatbot ? 'px-2' : 'px-12';
-
   return (
     <button
       type="submit"
       disabled={props.isDisabled || props.isLoading}
       {...props}
       class={
-        `py-2 ${paddingClass} justify-center font-semibold text-white focus:outline-none flex items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-100 transition-all filter hover:brightness-90 active:brightness-75 chatbot-button mr-1 ` +
+        `py-2 ` + (props.showCloseButton ? 'pl-2 pr-1' : 'px-2') + ` justify-center font-semibold text-white focus:outline-none flex items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-100 transition-all filter hover:brightness-90 active:brightness-75 chatbot-button ` +
+        (props.showCloseButton ? '' : 'mr-1') +
         props.class
       }
       style={{ background: 'transparent', border: 'none' }}
@@ -57,14 +56,13 @@ export const DeleteButton = (props: SendButtonProps) => {
 };
 
 export const CloseButton = (props: SendButtonProps & { title?: string }) => {
-  const paddingClass = 'px-2';
   return (
     <button
       type="button"
       disabled={props.isDisabled || props.isLoading}
       {...props}
       class={
-        `py-2 ${paddingClass} justify-center font-semibold text-white focus:outline-none flex items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-100 transition-all filter hover:brightness-90 active:brightness-75 chatbot-button ` +
+        `py-2 ` + (props.showCloseButton ? 'pl-1 pr-2' : 'px-2') + ` justify-center font-semibold text-white focus:outline-none flex items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-100 transition-all filter hover:brightness-90 active:brightness-75 chatbot-button ` +
         props.class
       }
       style={{ background: 'transparent', border: 'none' }}

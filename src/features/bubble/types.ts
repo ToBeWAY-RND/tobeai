@@ -9,6 +9,8 @@ export type BubbleTheme = {
   disclaimer?: DisclaimerPopUpTheme;
   customCSS?: string;
   form?: FormTheme;
+  border?: string;
+  borderRadius?: string | number;
 };
 
 export type FormTheme = {
@@ -67,6 +69,7 @@ export type ChatWindowTheme = {
   titleAvatarSrc?: string;
   titleTextColor?: string;
   titleBackgroundColor?: string;
+  titleHeight?: string | number;
   welcomeMessage?: string;
   errorMessage?: string;
   backgroundColor?: string;

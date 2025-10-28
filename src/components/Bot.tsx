@@ -2487,7 +2487,9 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
             </div>
           ) : null}
           {props.showTitle && !props.isFullPage ? (
-            <div class="absolute top-[35px] left-0 right-0 z-10 flex items-center justify-end h-[40px] px-2">
+            <div class="absolute top-[35px] left-0 right-0 z-10 flex items-center justify-end h-[40px] px-2"
+              style={{'background-color': props.backgroundColor || defaultBackgroundColor}}
+            >
               <ModelComboBox />
             </div>
           ) : null}

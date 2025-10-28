@@ -123,7 +123,7 @@ export const Bubble = (props: BubbleProps) => {
       <div
         part="bot"
         style={{
-          height: bubbleProps.theme?.chatWindow?.height ? `${bubbleProps.theme?.chatWindow?.height.toString()}px` : 'calc(100% - 150px)',
+          height: bubbleProps.theme?.chatWindow?.height ? `${bubbleProps.theme?.chatWindow?.height.toString()}px` : `calc(100% - ${bubbleProps.theme?.chatWindow?.antiHeight?.toString() || '50'}px)`,
           width: bubbleProps.theme?.chatWindow?.width ? `${bubbleProps.theme?.chatWindow?.width.toString()}px` : undefined,
           transition: 'transform 200ms cubic-bezier(0, 1.2, 1, 1), opacity 150ms ease-out',
           'transform-origin': 'bottom right',
@@ -134,14 +134,19 @@ export const Bubble = (props: BubbleProps) => {
           'background-size': 'cover',
           'background-position': 'center',
           'background-repeat': 'no-repeat',
-          'border': bubbleProps.theme?.border,
-          'border-radius': typeof bubbleProps.theme?.borderRadius === 'number' ? `${bubbleProps.theme?.borderRadius}px` : bubbleProps.theme?.borderRadius || undefined,
+          border: bubbleProps.theme?.border,
+          'border-radius':
+            typeof bubbleProps.theme?.borderRadius === 'number'
+              ? `${bubbleProps.theme?.borderRadius}px`
+              : bubbleProps.theme?.borderRadius || undefined,
           'z-index': 42424242,
-          bottom: hideButton ? `${buttonPosition().bottom}px` : `${Math.min(buttonPosition().bottom + buttonSize + 10, window.innerHeight - chatWindowBottom)}px`,
+          bottom: hideButton
+            ? `${buttonPosition().bottom}px`
+            : `${Math.min(buttonPosition().bottom + buttonSize + 10, window.innerHeight - chatWindowBottom)}px`,
           right: `${Math.max(0, Math.min(buttonPosition().right, window.innerWidth - (bubbleProps.theme?.chatWindow?.width ?? 410) - 10))}px`,
         }}
         class={
-          `fixed sm:right-5 rounded-lg w-full sm:w-[400px] max-h-[704px]` +
+          `fixed sm:right-5 rounded-lg w-full sm:w-[400px]` +
           (isBotOpened() ? ' opacity-1' : ' opacity-0 pointer-events-none') +
           ` bottom-${chatWindowBottom}px`
         }

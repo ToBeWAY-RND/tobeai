@@ -24,17 +24,15 @@ const LoadingDots = () => {
   return <span>{'.'.repeat(dots())}</span>;
 };
 
-const addChooseQueries = (items: any[], queries: Set<string>, fetchPropName: (propId: string) => Promise<string> | string) => {
-  (async () => {
-    for (const item of items) {
-      if (item.args?.org_property_id) {
-        const prop = await fetchPropName(item.args.org_property_id);
-        if (prop) {
-          queries.add(`'${prop}'`);
-        }
+const addChooseQueries = async (items: any[], queries: Set<string>, fetchPropName: (propId: string) => Promise<string> | string) => {
+  for (const item of items) {
+    if (item.args?.org_property_id) {
+      const prop = await fetchPropName(item.args.org_property_id);
+      if (prop) {
+        queries.add(`'${prop}'`);
       }
     }
-  })();
+  }
 };
 
 export const LoadingBubble = (props: LoadingBubbleProps) => {
@@ -50,17 +48,17 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
     return map;
   });
 
-  const summaryText = createMemo(() => {
+  const summaryText = createMemo<string[]>(() => {
     const g = grouped();
     if (!g.size) return [];
     const parts: string[] = [];
+
+    const pendingChooseJobs: Array<Promise<void>> = [];
 
     for (const [name, items] of g) {
       const queries = new Set<string>();
       if (name === 'get_property_list') {
         parts.push("속성 리스트 불러오는 중");
-      } else if (name === 'apply_search') {
-        parts.push("검색 속성에 값 매핑 중");
       } else if (name === 'mdm_application_guide_retriever') {
         for (const item of items) {
           if (item.args?.query) {
@@ -140,16 +138,22 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
         }
       } else if (name === "choose_one_enum") {
         if (typeof props.fetchPropName === 'function') {
-          addChooseQueries(items, queries, props.fetchPropName);
-        }
-        if (queries.size > 0) {
+          pendingChooseJobs.push(addChooseQueries(items, queries, props.fetchPropName).then(() => {
+            if (queries.size > 0) {
+              parts.push(Array.from(queries).join(', ') + '에 대한 속성값 식별 중');
+            }
+          }));
+        } else if (queries.size > 0) {
           parts.push(Array.from(queries).join(', ') + '에 대한 속성값 식별 중');
         }
       } else if (name === "choose_one_unit") {
         if (typeof props.fetchPropName === 'function') {
-          addChooseQueries(items, queries, props.fetchPropName);
-        }
-        if (queries.size > 0) {
+          pendingChooseJobs.push(addChooseQueries(items, queries, props.fetchPropName).then(() => {
+            if (queries.size > 0) {
+              parts.push(Array.from(queries).join(', ') + '에 대한 단위 식별 중');
+            }
+          }));
+        } else if (queries.size > 0) {
           parts.push(Array.from(queries).join(', ') + '에 대한 단위 식별 중');
         }
       } else if (name === "search") {
@@ -157,6 +161,10 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
       } else {
         parts.push(`'${name}' 호출 중`);
       }
+    }
+
+    if (pendingChooseJobs.length > 0) {
+      Promise.allSettled(pendingChooseJobs).then(() => { /* ignore */ });
     }
     return parts;
   });

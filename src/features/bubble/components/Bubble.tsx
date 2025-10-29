@@ -54,7 +54,10 @@ export const Bubble = (props: BubbleProps) => {
     };
   });
 
+  // eslint-disable-next-line solid/reactivity
   const hideButton = (bubbleProps.theme as any)?.button?.hideButton ?? false;
+
+  // eslint-disable-next-line solid/reactivity
   const externalTriggerElementId: string | undefined = (bubbleProps.theme as any)?.button?.externalTriggerElementId;
 
   createEffect(() => {
@@ -89,6 +92,26 @@ export const Bubble = (props: BubbleProps) => {
     return () => document.removeEventListener('click', handler, true);
   });
 
+  // eslint-disable-next-line solid/reactivity
+  const autoOpen = bubbleProps.theme?.button?.autoWindowOpen?.autoOpen ?? false;
+  // eslint-disable-next-line solid/reactivity
+  const autoOpenOnMobile = bubbleProps.theme?.button?.autoWindowOpen?.autoOpenOnMobile ?? false;
+  // eslint-disable-next-line solid/reactivity
+  const openDelay = bubbleProps.theme?.button?.autoWindowOpen?.openDelay ?? 2;
+
+  if (externalTriggerElementId) {
+    createEffect(() => {
+      if (autoOpen && (autoOpenOnMobile || window.innerWidth > 640)) {
+        const delayInSeconds = openDelay ?? 2; // Default to 2 seconds if openDelay is not defined
+        const delayInMilliseconds = delayInSeconds * 1000; // Convert seconds to milliseconds
+        setTimeout(() => {
+          openBot();
+        }, delayInMilliseconds);
+      }
+    });
+  }
+
+  // eslint-disable-next-line solid/reactivity
   const showTooltip = bubbleProps.theme?.tooltip?.showTooltip ?? false;
 
   return (
@@ -115,9 +138,9 @@ export const Bubble = (props: BubbleProps) => {
           isBotOpened={isBotOpened()}
           setButtonPosition={setButtonPosition}
           dragAndDrop={bubbleProps.theme?.button?.dragAndDrop ?? false}
-          autoOpen={bubbleProps.theme?.button?.autoWindowOpen?.autoOpen ?? false}
-          openDelay={bubbleProps.theme?.button?.autoWindowOpen?.openDelay}
-          autoOpenOnMobile={bubbleProps.theme?.button?.autoWindowOpen?.autoOpenOnMobile ?? false}
+          autoOpen={autoOpen}
+          openDelay={openDelay}
+          autoOpenOnMobile={autoOpenOnMobile}
         />
       </Show>
       <div

@@ -197,6 +197,8 @@ export type BotProps = {
   dateTimeToggle?: DateTimeToggleTheme;
   renderHTML?: boolean;
   closeBot?: () => void;
+  enableBot?: () => void;
+  disableBot?: () => void;
   showCloseButton?: boolean;
   useObserverClose?: boolean;
 };
@@ -1048,8 +1050,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       setChooseOnePropertyCache({});
       setChooseOneOptionCache({});
 
-      updateLoadingCalledTools([{name: 'apply_search'}]);
-
       setLoading(true);
 
       setMessages((prev) => {
@@ -1064,30 +1064,43 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         return all;
       });
 
+      const searchQuery = JSON.stringify(data);
+
       // applySearch 호출 후 결과 전송
       (async () => {
-        let humanInput: any = { ok: false, error: 'applySearch not implemented' };
+        let result = "Search Completed";
+        if (props.closeBot) {
+          props.closeBot();
+        }
         try {
           const applySearchFn = botProps.observersConfig?.applySearch;
           if (typeof applySearchFn === 'function') {
             const res = await applySearchFn(data);
-            if (res && typeof res === 'object' && 'ok' in res) humanInput = res;
-            else humanInput = { ok: true };
+            if (res && typeof res === 'object' && 'ok' in res && !res.ok) {
+              result = `Search Failed: ${res.reason ?? ''} / ${res.message ?? ''}`;
+            }
           }
         } catch (e: any) {
-          humanInput = { ok: false, error: e?.message ?? 'Unknown error' };
+          result = `Search Failed: ${e.message ?? ''}`;
         }
 
         setMessages((prevMessages) => {
           const allMessages = [...cloneDeep(prevMessages)];
           if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {
-            allMessages[allMessages.length - 1].action = null;
+            allMessages[allMessages.length - 1].message += `\n\n${searchQuery}\n\n${result}`;
           }
           addChatMessage(allMessages);
+
           return allMessages;
         });
 
-        await handleSubmit('', parsedAction, humanInput, true, true);
+        const userMessage = messages()[messages().length - 2];
+        const currMessage = messages()[messages().length - 1];
+
+        if (userMessage.type === 'userMessage' && currMessage.type === 'apiMessage') {
+          await logMessageCompletion('success', userMessage.message, messages()[messages().length - 1]);
+        }
+        clearChat();
       })();
       return;
     }
@@ -1194,7 +1207,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     }
   };
 
-  const fetchResponseFromEventStream = async (chatflowid: string, params: any, noUserMessage?: boolean, searchCompleted?: boolean) => {
+  const fetchResponseFromEventStream = async (chatflowid: string, params: any, noUserMessage?: boolean) => {
     const chatId = params.chatId;
     const input = params.question;
     params.streaming = true;
@@ -1227,8 +1240,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       },
       async onmessage(ev) {
         const payload = JSON.parse(ev.data);
-
-        let hasAction = false;
 
         switch (payload.event) {
           case 'start':
@@ -1304,36 +1315,20 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                 if (!allMessages[allMessages.length - 1].dateTime) {
                   allMessages[allMessages.length - 1].dateTime = new Date().toISOString();
                 }
-                const action = allMessages[allMessages.length - 1].action;
-                if (action && action.action === 'search') {
-                  hasAction = true;
-                }
               }
               addChatMessage(allMessages);
               return allMessages;
             });
             await logMessageCompletion('success', input);
-            if (!hasAction) {
-              setLoading(false);
-              setCalledTools([]);
-            }
+            setLoading(false);
+            setCalledTools([]);
             closeResponse();
             break;
         }
       },
       async onclose() {
-        let hasAction = false;
-        if (messages().length > 0) {
-          const last = messages()[messages().length - 1];
-          if (last.action?.action === 'search') {
-            hasAction = true;
-          }
-        }
-        if (!hasAction || searchCompleted) {
-          setLoading(false);
-          setCalledTools([]);
-        }
-
+        setLoading(false);
+        setCalledTools([]);
         closeResponse();
       },
       onerror(err) {
@@ -1461,7 +1456,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
   };
 
   // Handle form submission
-  const handleSubmit = async (value: string | object, action?: IAction | undefined | null, humanInput?: any, noUserMessage?: boolean, searchCompleted?: boolean) => {
+  const handleSubmit = async (value: string | object, action?: IAction | undefined | null, humanInput?: any, noUserMessage?: boolean) => {
     if (!action && typeof value === 'string' && value.trim() === '') {
       const containsFile = previews().filter((item) => !item.mime.startsWith('image') && item.type !== 'audio').length > 0;
       if (!previews().length || (previews().length && containsFile)) {
@@ -1530,7 +1525,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     if (humanInput) body.humanInput = humanInput;
 
     if (isChatFlowAvailableToStream()) {
-      fetchResponseFromEventStream(props.chatflowid, body, noUserMessage, searchCompleted);
+      fetchResponseFromEventStream(props.chatflowid, body, noUserMessage);
     } else {
       const result = await sendMessageQuery({
         chatflowid: props.chatflowid,
@@ -1787,6 +1782,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     try {
       setChooseOnePropertyCache({});
       setChooseOneOptionCache({});
+      setCalledTools([]);
       removeLocalStorageChatHistory(props.chatflowid);
       setChatId(
         (props.chatflowConfig?.vars as any)?.customerId ? `${(props.chatflowConfig?.vars as any).customerId.toString()}+${uuidv4()}` : uuidv4(),

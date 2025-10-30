@@ -82,6 +82,7 @@ chatflowid::
           textColor: "#D9D9D9",
           sendButtonColor: "#2C3238",
           autoFocus: true,
+          isSpeechToTextEnabled: true,
         },
         footer: {
           text: "",
@@ -89,11 +90,13 @@ chatflowid::
         },
         gptModels: {
           label: "모델",
-          defaultValue: "gpt-4o-mini",
-          values: [
-            { value: 'gpt-4o-mini', label: 'gpt-4o-mini' },
-            { value: 'gpt-5-nano', label: 'gpt-5-nano' },
-          ]
+          defaultValue: "openai:::gpt-4o-mini",
+          values: [{"label":"OpenAI - GPT-4o mini","value":"openai:::gpt-4o-mini"},
+            {"label":"OpenAI - GPT-5 nano","value":"openai::low:gpt-5-nano"},
+            {"label":"OpenAI - GPT-5 mini","value":"openai::low:gpt-5-mini"},
+            {"label":"Bedrock - Nova Pro","value":"bedrock:::apac.amazon.nova-pro-v1:0"},
+            {"label":"HuggingFace - Qwen 3 \/ 8B","value":"ollama:::qwen3:8b"},
+            {"label":"HuggingFace - Llama 3.2 \/ 3B","value":"ollama:::llama3.2:3b"}]
         },
         mdmModules: {
           label: "모듈",

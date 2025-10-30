@@ -2690,7 +2690,10 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                   inputValue={userInput()}
                   onInputChange={(value) => setUserInput(value)}
                   onSubmit={handleSubmit}
-                  uploadsConfig={uploadsConfig()}
+                  uploadsConfig={{
+                    ...uploadsConfig(),
+                    isSpeechToTextEnabled: props.textInput?.isSpeechToTextEnabled ?? uploadsConfig()?.isSpeechToTextEnabled ?? false
+                  }}
                   isFullFileUpload={fullFileUpload()}
                   fullFileUploadAllowedTypes={fullFileUploadAllowedTypes()}
                   setPreviews={setPreviews}

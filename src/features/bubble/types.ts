@@ -30,6 +30,7 @@ export type TextInputTheme = {
   sendSoundLocation?: string;
   receiveMessageSound?: boolean;
   receiveSoundLocation?: string;
+  isSpeechToTextEnabled?: boolean;
 };
 
 export type UserMessageTheme = {

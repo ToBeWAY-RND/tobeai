@@ -78,7 +78,11 @@ export const Bubble = (props: BubbleProps) => {
     if (!externalTriggerElementId) return;
     const el = document.getElementById(externalTriggerElementId);
     if (el) {
-      const handler = () => toggleBot();
+      const handler = () => {
+        const isLoading = el.getAttribute('searching') === 'true';
+        if (isLoading) return;
+        toggleBot();
+      };
       el.addEventListener('click', handler);
       return () => el.removeEventListener('click', handler);
     }
@@ -86,7 +90,11 @@ export const Bubble = (props: BubbleProps) => {
       const target = e.target as HTMLElement | null;
       if (!target) return;
       const el = target.closest(`#${externalTriggerElementId}`);
-      if (el) toggleBot();
+      if (el) {
+        const isLoading = el.getAttribute('searching') === 'true';
+        if (isLoading) return;
+        toggleBot();
+      }
     };
     document.addEventListener('click', handler, true);
     return () => document.removeEventListener('click', handler, true);

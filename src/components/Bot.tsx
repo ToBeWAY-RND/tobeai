@@ -155,6 +155,7 @@ export type observersConfigType = {
   observeMastClick?: observerConfigType;
   observeCloseClick?: () => Promise<void>;
   fetchPropName?: (propId: string) => Promise<string> | string;
+  fetchAreaTypeName?: (areaType: string) => Promise<string>;
   applySearch?: (data: any) => Promise<{ ok: boolean; error?: string } | { ok: false; error: string } | any>;
 };
 
@@ -979,7 +980,9 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       const prompts = {
         'PROP': "'%s'에 해당하는 속성을 선택해주세요",
         'VALUE': "'%s' 속성에 들어갈 값을 선택해주세요",
-        'UNIT': "'%s' 속성에 사용할 단위를 선택해주세요"
+        'UNIT': "'%s' 속성에 사용할 단위를 선택해주세요",
+        'AREATYPE': "'%s'에 해당하는 조직 영역을 선택해주세요",
+        'AREA': "'%s' 조직 영역에 들어갈 값을 선택해주세요"
       }
       type PromptKey = keyof typeof prompts;
 
@@ -2577,6 +2580,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                           avatarSrc={props.botMessage?.avatarSrc}
                           isAppending={message.message.trim() !== ''}
                           fetchPropName={props.observersConfig?.fetchPropName}
+                          fetchAreaTypeName={props.observersConfig?.fetchAreaTypeName}
                         />
                       )}
                     </>

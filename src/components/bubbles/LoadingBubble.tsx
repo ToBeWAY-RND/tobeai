@@ -10,6 +10,7 @@ type LoadingBubbleProps = {
   avatarSrc?: string;
   isAppending?: boolean;
   fetchPropName?:(propId: string) => Promise<string> | string;
+  fetchAreaTypeName?: (areaType: string) => Promise<string>;
 };
 
 const LoadingDots = () => {
@@ -30,6 +31,17 @@ const addChooseQueries = async (items: any[], queries: Set<string>, fetchPropNam
       const prop = await fetchPropName(item.args.org_property_id);
       if (prop) {
         queries.add(`'${prop}'`);
+      }
+    }
+  }
+};
+
+const addChooseAreaQueries = async (items: any[], queries: Set<string>, fetchAreaTypeName: (areaType: string) => Promise<string>) => {
+  for (const item of items) {
+    if (item.args?.org_areatype_id) {
+      const areatype = await fetchAreaTypeName(item.args.org_areatype_id);
+      if (areatype) {
+        queries.add(`'${areatype}'`);
       }
     }
   }
@@ -136,7 +148,7 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
         if (queries.size > 0) {
           parts.push(Array.from(queries).join(', ') + '에 대한 속성 식별 중');
         }
-      } else if (name === "choose_one_enum") {
+      } else if (name === "choose_one_enum_for_property") {
         if (typeof props.fetchPropName === 'function') {
           pendingChooseJobs.push(addChooseQueries(items, queries, props.fetchPropName).then(() => {
             if (queries.size > 0) {
@@ -146,7 +158,7 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
         } else if (queries.size > 0) {
           parts.push(Array.from(queries).join(', ') + '에 대한 속성값 식별 중');
         }
-      } else if (name === "choose_one_unit") {
+      } else if (name === "choose_one_unit_for_property") {
         if (typeof props.fetchPropName === 'function') {
           pendingChooseJobs.push(addChooseQueries(items, queries, props.fetchPropName).then(() => {
             if (queries.size > 0) {
@@ -155,6 +167,25 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
           }));
         } else if (queries.size > 0) {
           parts.push(Array.from(queries).join(', ') + '에 대한 단위 식별 중');
+        }
+      } else if (name === "choose_one_areatype") {
+        for (const item of items) {
+          if (item.args?.areatype_value) {
+            queries.add(`'${item.args.areatype_value}'`);
+          }
+        }
+        if (queries.size > 0) {
+          parts.push(Array.from(queries).join(', ') + '에 대한 조직 영역 식별 중');
+        }
+      } else if (name === "choose_one_areaid_or_filter") {
+        if (typeof props.fetchAreaTypeName === 'function') {
+          pendingChooseJobs.push(addChooseAreaQueries(items, queries, props.fetchAreaTypeName).then(() => {
+            if (queries.size > 0) {
+              parts.push(Array.from(queries).join(', ') + '에 대한 필터값 식별 중');
+            }
+          }));
+        } else if (queries.size > 0) {
+          parts.push(Array.from(queries).join(', ') + '에 대한 필터값 식별 중');
         }
       } else if (name === "search") {
         parts.push("검색 조건 받아오는 중");

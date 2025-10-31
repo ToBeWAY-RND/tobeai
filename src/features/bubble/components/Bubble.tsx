@@ -146,6 +146,7 @@ export const Bubble = (props: BubbleProps) => {
       <div
         part="bot"
         style={{
+          overflow: 'hidden',
           height: bubbleProps.theme?.chatWindow?.height ? `${bubbleProps.theme?.chatWindow?.height.toString()}px` : `calc(100% - ${bubbleProps.theme?.chatWindow?.antiHeight?.toString() || '50'}px)`,
           width: bubbleProps.theme?.chatWindow?.width ? `${bubbleProps.theme?.chatWindow?.width.toString()}px` : undefined,
           transition: isBotOpened() ? 'opacity 150ms ease-out' : 'opacity 300ms ease-in',

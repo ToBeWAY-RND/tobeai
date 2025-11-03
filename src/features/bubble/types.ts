@@ -22,6 +22,7 @@ export type TextInputTheme = {
   backgroundColor?: string;
   textColor?: string;
   placeholder?: string;
+  sendButtonSrc?: string;
   sendButtonColor?: string;
   maxChars?: number;
   maxCharsWarningMessage?: string;

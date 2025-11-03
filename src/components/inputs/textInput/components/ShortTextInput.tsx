@@ -9,20 +9,41 @@ type ShortTextInputProps = {
   isFullPage?: boolean;
 } & Omit<JSX.TextareaHTMLAttributes<HTMLTextAreaElement>, 'onInput'>;
 
-const DEFAULT_HEIGHT = 56;
+const FULL_DEFAULT_HEIGHT = 56;
+const BUBBLE_DEFAULT_HEIGHT = 50;
 
 export const ShortTextInput = (props: ShortTextInputProps) => {
   const [local, others] = splitProps(props, ['ref', 'onInput']);
-  const [height, setHeight] = createSignal(56);
+  const [height, setHeight] = createSignal(props.isFullPage ? FULL_DEFAULT_HEIGHT : BUBBLE_DEFAULT_HEIGHT);
+
+  let textareaEl: HTMLTextAreaElement | null = null;
+
+  const recomputeHeight = () => {
+    if (!textareaEl) return;
+    const minH = props.isFullPage ? FULL_DEFAULT_HEIGHT : BUBBLE_DEFAULT_HEIGHT;
+    if (!textareaEl.value || textareaEl.value.length === 0) {
+      setHeight(minH);
+      return;
+    } else {
+      const prev = textareaEl.style.height;
+      textareaEl.style.height = 'auto';
+
+      const next = Math.min(Math.max(textareaEl.scrollHeight, minH), 128);
+      textareaEl.style.height = prev;
+      setHeight(next);
+
+      textareaEl.scrollTop = textareaEl.scrollHeight;
+    }
+  }
 
   // @ts-expect-error: unknown type
   const handleInput = (e) => {
     if (props.ref) {
       if (e.currentTarget.value === '') {
         // reset height when value is empty
-        setHeight(DEFAULT_HEIGHT);
+        setHeight(props.isFullPage ? FULL_DEFAULT_HEIGHT : BUBBLE_DEFAULT_HEIGHT);
       } else {
-        setHeight(e.currentTarget.scrollHeight - 24);
+        setHeight(e.currentTarget.scrollHeight);
       }
       e.currentTarget.scrollTo(0, e.currentTarget.scrollHeight);
       local.onInput(e.currentTarget.value);
@@ -59,6 +80,7 @@ export const ShortTextInput = (props: ShortTextInputProps) => {
           else if (props.ref) (props.ref as any) = node;
         };
         assign(el);
+        textareaEl = el;
 
         if (el) {
           // keydown 캡처 단계에서 Backspace 전파 차단
@@ -88,15 +110,17 @@ export const ShortTextInput = (props: ShortTextInputProps) => {
           };
         }
       }}
-      class={`focus:outline-none bg-transparent px-4 ${props.isFullPage === false ? 'py-3 h-[50px] min-h-[50px] max-h-[50px] overflow-y-auto' : 'py-4 min-h-[56px] max-h-[128px]'} flex-1 w-full text-input disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-100 `}
+      class={`focus:outline-none bg-transparent px-4 ${props.isFullPage ? 'py-4 min-h-[56px] max-h-[128px]' : 'py-3 min-h-[50px] max-h-[128px]'} flex-1 w-full text-input disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-100 `}
       disabled={props.disabled}
       style={{
         'font-size': props.fontSize ? `${props.fontSize}px` : '16px',
         resize: 'none',
-        height: !props.isFullPage ? '50px' : `${props.value !== '' ? height() : DEFAULT_HEIGHT}px`,
+        height: `${props.value !== '' ? height() : (props.isFullPage ? FULL_DEFAULT_HEIGHT : BUBBLE_DEFAULT_HEIGHT)}px`,
       }}
+      onFocus={recomputeHeight}
       onInput={handleInput}
       onKeyDown={handleKeyDown}
+      onChange={recomputeHeight}
       {...others}
     />
   );

@@ -1995,6 +1995,10 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         setChatFeedbackStatus(chatFeedbackStatus);
       }
       if (chatbotConfig.uploads) {
+        chatbotConfig.uploads.isSpeechToTextEnabled = chatbotConfig.uploads.isSpeechToTextEnabled ?? false;
+        if (chatbotConfig.uploads.isSpeechToTextEnabled) {
+          chatbotConfig.uploads.isSpeechToTextEnabled = props.textInput?.isSpeechToTextEnabled ?? false;
+        }
         setUploadsConfig(chatbotConfig.uploads);
       }
       if (chatbotConfig.leads) {
@@ -2412,7 +2416,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
               style={{
                 background: props.titleBackgroundColor || props.bubbleBackgroundColor || defaultTitleBackgroundColor,
                 color: props.titleTextColor || props.bubbleTextColor || defaultBackgroundColor,
-                'border-bottom': (props.isFullPage ? '1px solid #CED4DA': undefined)
+                'border-bottom': props.isFullPage ? '1px solid #CED4DA' : undefined,
               }}
             >
               <Show when={props.titleAvatarSrc}>
@@ -2479,8 +2483,9 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
             </div>
           ) : null}
           {props.showTitle && !props.isFullPage ? (
-            <div class="absolute top-[35px] left-0 right-0 z-10 flex items-center justify-end h-[40px] px-2"
-              style={{'background-color': props.backgroundColor || defaultBackgroundColor}}
+            <div
+              class="absolute top-[35px] left-0 right-0 z-10 flex items-center justify-end h-[40px] px-2"
+              style={{ 'background-color': props.backgroundColor || defaultBackgroundColor }}
             >
               <ModelComboBox />
             </div>
@@ -2489,7 +2494,9 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
             <div
               ref={chatContainer}
               class={
-                'overflow-y-scroll flex flex-col flex-grow min-w-full w-full px-3 ' + (props.isFullPage ? 'pt-[70px]' : 'pt-[91px]') + ' relative scrollable-container chatbot-chat-view scroll-smooth'
+                'overflow-y-scroll flex flex-col flex-grow min-w-full w-full px-3 ' +
+                (props.isFullPage ? 'pt-[70px]' : 'pt-[91px]') +
+                ' relative scrollable-container chatbot-chat-view scroll-smooth'
               }
             >
               <For each={[...messages()]}>
@@ -2648,7 +2655,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                     </div>
                   ) : (
                     <div
-                      class="h-[58px] flex items-center justify-between chatbot-input border border-[#eeeeee]"
+                      class={`h-auto max-h-[192px] ${props.isFullPage ? 'min-h-[56px]' : 'min-h-[50px]'} flex items-center justify-between chatbot-input border border-[#eeeeee]`}
                       data-testid="input"
                       style={{
                         margin: 'auto',
@@ -2664,14 +2671,16 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                         {isLoadingRecording() && <span class="ml-1.5">Sending...</span>}
                       </div>
                       <div class="flex items-center">
-                        <CancelButton buttonColor={props.textInput?.sendButtonColor} type="button" class="m-0" on:click={onRecordingCancelled}>
+                        <CancelButton buttonColor={props.textInput?.sendButtonColor} type="button" class={`m-0 ${props.isFullPage ? 'h-14' : 'h-[50px]'} flex items-center justify-center`} on:click={onRecordingCancelled}>
                           <span style={{ 'font-family': 'Poppins, sans-serif' }}>Send</span>
                         </CancelButton>
                         <SendButton
                           sendButtonColor={props.textInput?.sendButtonColor}
+                          sendButtonSrc={props.textInput?.sendButtonSrc}
                           type="button"
                           isDisabled={loading()}
-                          class="m-0"
+                          class={`m-0 ${props.isFullPage ? 'h-14' : 'h-[50px]'} flex items-center justify-center ${uploadsConfig()?.isSpeechToTextEnabled ? 'pl-3 pr-4': 'px-4'}`}
+                          width={props.isFullPage ? '24px' : undefined }
                           on:click={onRecordingStopped}
                         >
                           <span style={{ 'font-family': 'Poppins, sans-serif' }}>Send</span>
@@ -2686,6 +2695,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                   textColor={props.textInput?.textColor}
                   placeholder={props.textInput?.placeholder}
                   sendButtonColor={props.textInput?.sendButtonColor}
+                  sendButtonSrc={props.textInput?.sendButtonSrc}
                   maxChars={props.textInput?.maxChars}
                   maxCharsWarningMessage={props.textInput?.maxCharsWarningMessage}
                   autoFocus={props.textInput?.autoFocus}
@@ -2694,10 +2704,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                   inputValue={userInput()}
                   onInputChange={(value) => setUserInput(value)}
                   onSubmit={handleSubmit}
-                  uploadsConfig={{
-                    ...uploadsConfig(),
-                    isSpeechToTextEnabled: props.textInput?.isSpeechToTextEnabled ?? uploadsConfig()?.isSpeechToTextEnabled ?? false
-                  }}
+                  uploadsConfig={uploadsConfig()}
                   isFullFileUpload={fullFileUpload()}
                   fullFileUploadAllowedTypes={fullFileUploadAllowedTypes()}
                   setPreviews={setPreviews}

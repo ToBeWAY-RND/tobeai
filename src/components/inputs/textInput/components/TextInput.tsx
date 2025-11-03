@@ -13,6 +13,7 @@ type TextInputProps = {
   backgroundColor?: string;
   textColor?: string;
   sendButtonColor?: string;
+  sendButtonSrc?: string;
   inputValue: string;
   fontSize?: number;
   disabled?: boolean;
@@ -141,7 +142,7 @@ export const TextInput = (props: TextInputProps) => {
 
   return (
     <div
-      class={`w-full h-auto max-h-[192px] ${props.isFullPage ? 'min-h-[56px]' : 'min-h-[50px]'} flex flex-col items-end justify-between chatbot-input border border-[#eeeeee]`}
+      class={`w-full h-auto max-h-[192px] ${props.isFullPage ? 'min-h-[56px]' : 'min-h-[50px]'} flex items-center justify-between chatbot-input border border-[#eeeeee]`}
       data-testid="input"
       style={{
         margin: 'auto',
@@ -155,7 +156,7 @@ export const TextInput = (props: TextInputProps) => {
           {warningMessage()}
         </div>
       </Show>
-      <div class={`w-full flex justify-between ${props.isFullPage ? 'items-end' : 'items-center h-[50px]'}`}>
+      <div class="w-full flex justify-between items-end">
         {props.uploadsConfig?.isImageUploadAllowed ? (
           <>
             <ImageUploadButton
@@ -224,10 +225,11 @@ export const TextInput = (props: TextInputProps) => {
         ) : null}
         <SendButton
           sendButtonColor={props.sendButtonColor}
+          sendButtonSrc={props.sendButtonSrc}
           type="button"
           isDisabled={props.disabled || isSendButtonDisabled()}
-          class={`m-0 ${props.isFullPage ? 'h-14' : 'h-[50px]'} flex items-center justify-center`}
-          width={!props.isFullPage ? '24px' : undefined }
+          class={`m-0 ${props.isFullPage ? 'h-14' : 'h-[50px]'} flex items-center justify-center ${props.uploadsConfig?.isSpeechToTextEnabled ? 'pl-3 pr-4': 'px-4'}`}
+          width={props.isFullPage ? '24px' : undefined }
           on:click={submit}
         >
           <span style={{ 'font-family': 'Poppins, sans-serif' }}>Send</span>

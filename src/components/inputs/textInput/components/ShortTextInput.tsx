@@ -18,24 +18,6 @@ export const ShortTextInput = (props: ShortTextInputProps) => {
 
   let textareaEl: HTMLTextAreaElement | null = null;
 
-  const recomputeHeight = () => {
-    if (!textareaEl) return;
-    const minH = props.isFullPage ? FULL_DEFAULT_HEIGHT : BUBBLE_DEFAULT_HEIGHT;
-    if (!textareaEl.value || textareaEl.value.length === 0) {
-      setHeight(minH);
-      return;
-    } else {
-      const prev = textareaEl.style.height;
-      textareaEl.style.height = 'auto';
-
-      const next = Math.min(Math.max(textareaEl.scrollHeight, minH), 128);
-      textareaEl.style.height = prev;
-      setHeight(next);
-
-      textareaEl.scrollTop = textareaEl.scrollHeight;
-    }
-  }
-
   // @ts-expect-error: unknown type
   const handleInput = (e) => {
     if (props.ref) {
@@ -52,12 +34,14 @@ export const ShortTextInput = (props: ShortTextInputProps) => {
 
   // @ts-expect-error: unknown type
   const handleKeyDown = (e) => {
+	  console.log(e);
     // Handle Shift + Enter new line
     if (e.keyCode == 13 && e.shiftKey) {
       e.preventDefault();
       e.stopPropagation();
       e.currentTarget.value += '\n';
       handleInput(e);
+	  return;
     }
 
     // 백스페이스 처리(버블 단계)
@@ -117,10 +101,8 @@ export const ShortTextInput = (props: ShortTextInputProps) => {
         resize: 'none',
         height: `${props.value !== '' ? height() : (props.isFullPage ? FULL_DEFAULT_HEIGHT : BUBBLE_DEFAULT_HEIGHT)}px`,
       }}
-      onFocus={recomputeHeight}
       onInput={handleInput}
       onKeyDown={handleKeyDown}
-      onChange={recomputeHeight}
       {...others}
     />
   );

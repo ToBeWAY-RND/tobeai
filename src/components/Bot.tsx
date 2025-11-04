@@ -1243,7 +1243,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       },
       async onmessage(ev) {
         const payload = JSON.parse(ev.data);
-
         switch (payload.event) {
           case 'start':
             if (!(noUserMessage ?? false)) {

@@ -35,6 +35,7 @@ export const Bubble = (props: BubbleProps) => {
     isBotOpened() ? closeBot() : openBot();
   };
 
+
   onCleanup(() => {
     setIsBotStarted(false);
   });
@@ -60,6 +61,15 @@ export const Bubble = (props: BubbleProps) => {
 
   // eslint-disable-next-line solid/reactivity
   const externalTriggerElementId: string | undefined = (bubbleProps.theme as any)?.button?.externalTriggerElementId;
+
+  const disableButton = () => {
+    if (!externalTriggerElementId) return;
+    try {
+      const el = document.querySelector(`#${externalTriggerElementId}`);
+      if (el) el.classList.add('disabled');
+    } catch (error) { /* ignored */ }
+
+  }
 
   createEffect(() => {
     const onOpen = () => openBot();
@@ -223,6 +233,7 @@ export const Bubble = (props: BubbleProps) => {
               mdmModules={bubbleProps.theme?.chatWindow?.mdmModules}
               closeButtonColor={bubbleProps.theme?.chatWindow?.closeButtonColor}
               fastMode={bubbleProps.theme?.chatWindow?.fastMode}
+              disableButton={disableButton}
             />
           </div>
         </Show>

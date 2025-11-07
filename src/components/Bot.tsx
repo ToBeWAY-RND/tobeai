@@ -204,6 +204,7 @@ export type BotProps = {
   showCloseButton?: boolean;
   useObserverClose?: boolean;
   fastMode?: CheckBoxTheme;
+  disableButton?: () => void;
 };
 
 export type LeadsConfig = {
@@ -1528,6 +1529,11 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
     if (humanInput) body.humanInput = humanInput;
 
+    if ((props.chatflowConfig?.vars as any)?.isFastMode === 'Y') {
+      if (props.closeBot) props.closeBot();
+      if (props.disableButton) props.disableButton();
+    }
+
     if (isChatFlowAvailableToStream()) {
       fetchResponseFromEventStream(props.chatflowid, body, noUserMessage);
     } else {
@@ -2689,7 +2695,12 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                         {isLoadingRecording() && <span class="ml-1.5">Sending...</span>}
                       </div>
                       <div class="flex items-center">
-                        <CancelButton buttonColor={props.textInput?.sendButtonColor} type="button" class={`m-0 ${props.isFullPage ? 'h-14' : 'h-[50px]'} flex items-center justify-center`} on:click={onRecordingCancelled}>
+                        <CancelButton
+                          buttonColor={props.textInput?.sendButtonColor}
+                          type="button"
+                          class={`m-0 ${props.isFullPage ? 'h-14' : 'h-[50px]'} flex items-center justify-center`}
+                          isFullPage={props.isFullPage}
+                          on:click={onRecordingCancelled}>
                           <span style={{ 'font-family': 'Poppins, sans-serif' }}>Send</span>
                         </CancelButton>
                         <SendButton
@@ -2697,7 +2708,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                           sendButtonSrc={props.textInput?.sendButtonSrc}
                           type="button"
                           isDisabled={loading()}
-                          class={`m-0 ${props.isFullPage ? 'h-14' : 'h-[50px]'} flex items-center justify-center ${uploadsConfig()?.isSpeechToTextEnabled ? 'pl-3 pr-4': 'px-4'}`}
+                          class={`m-0 ${props.isFullPage ? 'h-14' : 'h-[50px]'} flex items-center justify-center ${(uploadsConfig()?.isSpeechToTextEnabled) ? (props.isFullPage ? 'pl-3 pr-4' : 'pl-1.5 pr-4') : 'px-4'}`}
                           width={props.isFullPage ? '24px' : undefined }
                           on:click={onRecordingStopped}
                         >

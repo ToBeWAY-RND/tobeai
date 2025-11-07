@@ -155,6 +155,8 @@ export type observersConfigType = {
   observeMenuClick?: observerConfigType;
   observeMastClick?: observerConfigType;
   observeCloseClick?: () => Promise<void>;
+  disableButton?: () => void;
+  alertAgentError?: () => void;
   fetchPropName?: (propId: string) => Promise<string> | string;
   fetchAreaTypeName?: (areaType: string) => Promise<string>;
   applySearch?: (data: any) => Promise<{ ok: boolean; error?: string } | { ok: false; error: string } | any>;
@@ -1304,12 +1306,20 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
             updateErrorMessage(payload.data);
             await logMessageCompletion('error', input);
             setCalledTools([]);
+            if ((props.chatflowConfig?.vars as any)?.isFastMode === 'Y' && props.observersConfig?.alertAgentError) {
+              props.observersConfig.alertAgentError();
+              clearChat();
+            }
             break;
           case 'abort':
             abortMessage();
             await logMessageCompletion('abort', input);
             setCalledTools([]);
             closeResponse();
+            if ((props.chatflowConfig?.vars as any)?.isFastMode === 'Y' && props.observersConfig?.alertAgentError) {
+              props.observersConfig.alertAgentError();
+              clearChat();
+            }
             break;
           case 'end':
             setLocalStorageChatflow(chatflowid, chatId);
@@ -1341,6 +1351,10 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         logMessageCompletion('error', input).catch((e) => console.error('logMessageCompletion failed', e));
         setLoading(false);
         closeResponse();
+        if ((props.chatflowConfig?.vars as any)?.isFastMode === 'Y' && props.observersConfig?.alertAgentError) {
+          props.observersConfig.alertAgentError();
+          clearChat();
+        }
         throw err;
       },
     });
@@ -1530,8 +1544,13 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     if (humanInput) body.humanInput = humanInput;
 
     if ((props.chatflowConfig?.vars as any)?.isFastMode === 'Y') {
-      if (props.closeBot) props.closeBot();
-      if (props.disableButton) props.disableButton();
+      if (props.closeBot) props.closeBot()
+
+      if (props.observersConfig?.disableButton) {
+        props.observersConfig.disableButton();
+      } else if (props.disableButton) {
+        props.disableButton();
+      }
     }
 
     if (isChatFlowAvailableToStream()) {

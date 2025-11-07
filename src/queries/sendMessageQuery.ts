@@ -131,7 +131,7 @@ export const sendFileDownloadQuery = ({ apiHost = 'http://localhost:3000', body,
     onRequest: onRequest,
   });
 
-export const sendMessageLog = ({ chatflowid,aimlHost = 'http://localhost:8443', body, onRequest }: MessageRequest) =>
+export const sendMessageLog = ({ chatflowid, aimlHost = 'http://localhost:8443', body, onRequest }: MessageRequest) =>
   sendRequest<any>({
     method: 'POST',
     url: `${aimlHost}/api/v1/log/${chatflowid}`,

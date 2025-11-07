@@ -228,7 +228,7 @@ export const TextInput = (props: TextInputProps) => {
           sendButtonSrc={props.sendButtonSrc}
           type="button"
           isDisabled={props.disabled || isSendButtonDisabled()}
-          class={`m-0 ${props.isFullPage ? 'h-14' : 'h-[50px]'} flex items-center justify-center ${props.uploadsConfig?.isSpeechToTextEnabled ? 'pl-3 pr-4': 'px-4'}`}
+          class={`m-0 ${props.isFullPage ? 'h-14' : 'h-[50px]'} flex items-center justify-center ${props.uploadsConfig?.isSpeechToTextEnabled ? 'pl-1.5 pr-4': 'px-4'}`}
           width={props.isFullPage ? '24px' : undefined }
           on:click={submit}
         >

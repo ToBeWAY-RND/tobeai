@@ -5,6 +5,7 @@ import { BubbleParams } from '../types';
 import { Bot, BotProps } from '../../../components/Bot';
 import Tooltip from './Tooltip';
 import { getBubbleButtonSize } from '@/utils';
+import theme from 'tailwindcss/defaultTheme';
 
 const defaultButtonColor = '#3B81F6';
 const defaultIconColor = 'white';
@@ -221,6 +222,7 @@ export const Bubble = (props: BubbleProps) => {
               gptModels={bubbleProps.theme?.chatWindow?.gptModels}
               mdmModules={bubbleProps.theme?.chatWindow?.mdmModules}
               closeButtonColor={bubbleProps.theme?.chatWindow?.closeButtonColor}
+              fastMode={bubbleProps.theme?.chatWindow?.fastMode}
             />
           </div>
         </Show>

@@ -10,7 +10,7 @@ import {
   createAttachmentWithFormData,
   sendMessageLog,
 } from '@/queries/sendMessageQuery';
-import { TextInput, ComboBox } from './inputs';
+import { TextInput, ComboBox, CheckBox } from './inputs';
 import { GuestBubble } from './bubbles/GuestBubble';
 import { BotBubble } from './bubbles/BotBubble';
 import { LoadingBubble } from './bubbles/LoadingBubble';
@@ -23,7 +23,8 @@ import {
   FeedbackTheme,
   DisclaimerPopUpTheme,
   DateTimeToggleTheme,
-  ComboBoxTheme, 
+  ComboBoxTheme,
+  CheckBoxTheme,
 } from '@/features/bubble/types';
 import { Badge } from './Badge';
 import { Popup, DisclaimerPopup } from '@/features/popup';
@@ -202,6 +203,7 @@ export type BotProps = {
   disableBot?: () => void;
   showCloseButton?: boolean;
   useObserverClose?: boolean;
+  fastMode?: CheckBoxTheme;
 };
 
 export type LeadsConfig = {
@@ -1951,6 +1953,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                 "name": "body",
                 "addOptions": ""
               },
+              },
               {
                 "type": "options",
                 "label": "Choices",
@@ -2311,22 +2314,37 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     }),
   );
 
-  const ModelComboBox = () => (
-    <div class="flex items-center px-3">
-      <ComboBox
-        options={props.gptModels?.values || []}
-        label={props.gptModels?.label}
-        defaultValue={props.gptModels?.defaultValue}
-        onChange={(value: string) => {
-          // 선택된 모델델 값을 chatflowConfig에 저장
-          if (botProps.chatflowConfig?.vars) {
-            (botProps.chatflowConfig.vars as any).gptModel = value;
-          }
-        }}
-        style={{ width: 'auto' }}
-      />
-    </div>
-  );
+  const ModelComboBox = () => {
+    return (
+      <div class="flex items-center px-3 space-x-3">
+        <ComboBox
+          options={props.gptModels?.values || []}
+          label={props.gptModels?.label}
+          defaultValue={props.gptModels?.defaultValue}
+          onChange={(value: string) => {
+            // 선택된 모델 값을 chatflowConfig에 저장
+            if (botProps.chatflowConfig?.vars) {
+              (botProps.chatflowConfig.vars as any).gptModel = value;
+            }
+          }}
+          style={{ width: 'auto' }}
+        />
+		  {!botProps.isFullPage && props.fastMode && (
+			  <CheckBox
+				label={props.fastMode.label}
+				defaultValue={((props.chatflowConfig?.vars as any)?.isFastMode && (props.chatflowConfig?.vars as any).isFastMode === 'Y') ?? props.fastMode.defaultValue ?? false}
+				backgroundColor={props.fastMode.backgroundColor ?? props.titleBackgroundColor}
+				symbolColor={props.fastMode.symbolColor}
+				labelInButton={props.fastMode.labelInButton}
+				onChange={(value: boolean) => {
+					if (props.chatflowConfig?.vars as any)
+						(props.chatflowConfig?.vars as any).isFastMode = value ? 'Y' : 'N';
+				}}
+			  />
+		  )}
+      </div>
+    );
+  };
 
   const previewDisplay = (item: FilePreview) => {
     if (item.mime.startsWith('image/')) {
@@ -2486,6 +2504,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
               class="absolute top-[35px] left-0 right-0 z-10 flex items-center justify-end h-[40px] px-2"
               style={{ 'background-color': props.backgroundColor || defaultBackgroundColor }}
             >
+				
               <ModelComboBox />
             </div>
           ) : null}

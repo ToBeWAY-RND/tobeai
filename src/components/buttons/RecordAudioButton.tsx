@@ -7,6 +7,7 @@ type RecordAudioButtonProps = {
   isDisabled?: boolean;
   isLoading?: boolean;
   disableIcon?: boolean;
+  isFullPage?: boolean;
 } & JSX.ButtonHTMLAttributes<HTMLButtonElement>;
 
 export const RecordAudioButton = (props: RecordAudioButtonProps) => {
@@ -16,7 +17,7 @@ export const RecordAudioButton = (props: RecordAudioButtonProps) => {
       disabled={props.isDisabled || props.isLoading}
       {...props}
       class={
-        'py-2 pl-4 pr-1.5 justify-center font-semibold focus:outline-none flex items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-100 transition-all filter hover:brightness-90 active:brightness-75 chatbot-button ' +
+        `py-2 pl-4 ${props.isFullPage ? "pr-3" : "pr-1.5"} justify-center font-semibold focus:outline-none flex items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-100 transition-all filter hover:brightness-90 active:brightness-75 chatbot-button ` +
         props.class
       }
       style={{ background: 'transparent', border: 'none' }}

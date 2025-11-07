@@ -219,6 +219,7 @@ export const TextInput = (props: TextInputProps) => {
             class={`m-0 start-recording-button ${props.isFullPage ? 'h-14' : 'h-[50px]'} flex items-center justify-center`}
             isDisabled={props.disabled || isSendButtonDisabled()}
             on:click={props.onMicrophoneClicked}
+            isFullPage={props.isFullPage}
           >
             <span style={{ 'font-family': 'Poppins, sans-serif' }}>Record Audio</span>
           </RecordAudioButton>

@@ -46,7 +46,7 @@ export const Slider = (props: Props) => {
           if (props.disabled) return;
         }}
         class={[
-          'relative inline-flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-offset-1',
+          'relative inline-flex items-center justify-center outline-none focus:outline-none focus:ring-0 focus:ring-offset-0',
           'transition-all duration-150',
           props.disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
         ].join(' ')}

@@ -230,7 +230,7 @@ export const TextInput = (props: TextInputProps) => {
           type="button"
           isDisabled={props.disabled || isSendButtonDisabled()}
           class={`m-0 ${props.isFullPage ? 'h-14' : 'h-[50px]'} flex items-center justify-center ${(props.uploadsConfig?.isSpeechToTextEnabled) ? (props.isFullPage ? 'pl-3 pr-4' : 'pl-1.5 pr-4') : 'px-4'}`}
-          width={props.isFullPage ? '24px' : undefined }
+          width={props.isFullPage ? '24px' : '26px' }
           on:click={submit}
         >
           <span style={{ 'font-family': 'Poppins, sans-serif' }}>Send</span>

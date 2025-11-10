@@ -21,7 +21,7 @@ export const CancelButton = (props: CancelButtonProps) => {
       }
       style={{ background: 'transparent', border: 'none' }}
     >
-      <XIcon color={props.buttonColor} />
+      <XIcon color="#AFAFAF" />
     </button>
   );
 };

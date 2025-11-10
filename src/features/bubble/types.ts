@@ -94,7 +94,7 @@ export type ChatWindowTheme = {
   renderHTML?: boolean;
   gptModels?: ComboBoxTheme;
   mdmModules?: ComboBoxTheme;
-  fastMode?: CheckBoxTheme;
+  fastMode?: SliderTheme;
   showCloseButton?: boolean;
   useObserverClose?: boolean;
   closeButtonColor?: string;
@@ -149,10 +149,9 @@ export type ComboBoxTheme = {
   values: { value: string; label: string }[];
 };
 
-export type CheckBoxTheme = {
+export type SliderTheme = {
   label?: string;
   defaultValue?: boolean;
-  labelInButton?: boolean;
-  backgroundColor?: string;
-  symbolColor?: string;
+  onColor?: string;
+  offColor?: string;
 }

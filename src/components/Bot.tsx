@@ -10,7 +10,7 @@ import {
   createAttachmentWithFormData,
   sendMessageLog,
 } from '@/queries/sendMessageQuery';
-import { TextInput, ComboBox, CheckBox } from './inputs';
+import { TextInput, ComboBox, Slider } from './inputs';
 import { GuestBubble } from './bubbles/GuestBubble';
 import { BotBubble } from './bubbles/BotBubble';
 import { LoadingBubble } from './bubbles/LoadingBubble';
@@ -24,7 +24,7 @@ import {
   DisclaimerPopUpTheme,
   DateTimeToggleTheme,
   ComboBoxTheme,
-  CheckBoxTheme,
+  SliderTheme,
 } from '@/features/bubble/types';
 import { Badge } from './Badge';
 import { Popup, DisclaimerPopup } from '@/features/popup';
@@ -205,7 +205,7 @@ export type BotProps = {
   disableBot?: () => void;
   showCloseButton?: boolean;
   useObserverClose?: boolean;
-  fastMode?: CheckBoxTheme;
+  fastMode?: SliderTheme;
   disableButton?: () => void;
 };
 
@@ -2341,7 +2341,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
   const ModelComboBox = () => {
     return (
-      <div class="flex items-center px-3 space-x-3">
+      <div class={`flex items-center ${(props.isFullPage? 'px-3' : 'px-1.5')} space-x-3`}>
         <ComboBox
           options={props.gptModels?.values || []}
           label={props.gptModels?.label}
@@ -2355,12 +2355,11 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           style={{ width: 'auto' }}
         />
 		  {!botProps.isFullPage && props.fastMode && (
-			  <CheckBox
+			  <Slider
 				label={props.fastMode.label}
 				defaultValue={((props.chatflowConfig?.vars as any)?.isFastMode && (props.chatflowConfig?.vars as any).isFastMode === 'Y') ?? props.fastMode.defaultValue ?? false}
-				backgroundColor={props.fastMode.backgroundColor ?? props.titleBackgroundColor}
-				symbolColor={props.fastMode.symbolColor}
-				labelInButton={props.fastMode.labelInButton}
+				onColor={props.fastMode.onColor ?? props.titleBackgroundColor}
+        offColor={props.fastMode.offColor}
 				onChange={(value: boolean) => {
 					if (props.chatflowConfig?.vars as any)
 						(props.chatflowConfig?.vars as any).isFastMode = value ? 'Y' : 'N';
@@ -2526,7 +2525,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           ) : null}
           {props.showTitle && !props.isFullPage ? (
             <div
-              class="absolute top-[35px] left-0 right-0 z-10 flex items-center justify-end h-[40px] px-2"
+              class="absolute top-[35px] left-0 right-0 z-10 flex items-center justify-end h-[40px] px-1"
               style={{ 'background-color': props.backgroundColor || defaultBackgroundColor }}
             >
 				

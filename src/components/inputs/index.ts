@@ -1,3 +1,3 @@
 export { TextInput } from './textInput';
 export { ComboBox } from './ComboBox';
-export { CheckBox } from './CheckBox';
+export { Slider } from './Slider';

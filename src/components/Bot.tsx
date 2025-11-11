@@ -157,6 +157,7 @@ export type observersConfigType = {
   observeMastClick?: observerConfigType;
   observeCloseClick?: () => Promise<void>;
   disableButton?: () => void;
+  enableButton?: () => void;
   alertAgentError?: () => void;
   fetchPropName?: (propId: string) => Promise<string> | string;
   fetchAreaTypeName?: (areaType: string) => Promise<string>;
@@ -1954,9 +1955,11 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 	  if (lastMessage && lastMessage.type === 'apiMessage' && lastMessage.pendingAction) {
 		  if (props.openBot) {
 			  props.openBot()
-
+			  if (props.observersConfig?.disableButton) props.observersConfig.disableButton();
 			  updateLastMessageAction(lastMessage.pendingAction);
 		  }
+	  } else {
+		  if (props.observersConfig?.enableButton) props.observersConfig.enableButton();
 	  }
     }
 

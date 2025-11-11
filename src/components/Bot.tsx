@@ -1953,15 +1953,17 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       setMessages([...filteredMessages]);
 	  const lastMessage = filteredMessages[filteredMessages.length - 1];
 	  if (lastMessage && lastMessage.type === 'apiMessage' && lastMessage.pendingAction) {
-		  if (props.openBot) {
+		  if (props.openBot && props.observersConfig?.disableButton) {
 			  props.openBot()
-			  if (props.observersConfig?.disableButton) props.observersConfig.disableButton();
+			  props.observersConfig.disableButton();
 			  updateLastMessageAction(lastMessage.pendingAction);
 		  }
 	  } else {
 		  if (props.observersConfig?.enableButton) props.observersConfig.enableButton();
 	  }
-    }
+    } else {
+		if (props.observersConfig?.enableButton) props.observersConfig.enableButton();
+	}
 
     // Determine if particular chatflow is available for streaming
     const { data } = await isStreamAvailableQuery({

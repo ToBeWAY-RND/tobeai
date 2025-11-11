@@ -132,6 +132,7 @@ export type MessageType = {
   agentFlowExecutedData?: any;
   usedTools?: any[];
   action?: IAction | null;
+  pendingAction?: IAction | null;
   rating?: FeedbackRatingType;
   id?: string;
   followUpPrompts?: string;
@@ -201,6 +202,7 @@ export type BotProps = {
   dateTimeToggle?: DateTimeToggleTheme;
   renderHTML?: boolean;
   closeBot?: () => void;
+  openBot?: () => void;
   enableBot?: () => void;
   disableBot?: () => void;
   showCloseButton?: boolean;
@@ -906,7 +908,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
   };
 
 
-  const updateLastMessageAction = (action: IAction) => {
+  const updateLastMessageAction = (action: IAction, resolve?: true) => {
     const parsedAction: IAction = typeof action === 'string' ? JSON.parse(action as any) : action;
 
     // Handle custom actions
@@ -1084,8 +1086,25 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           const applySearchFn = botProps.observersConfig?.applySearch;
           if (typeof applySearchFn === 'function') {
             const res = await applySearchFn(data);
-            if (res && typeof res === 'object' && 'ok' in res && !res.ok) {
-              result = `Search Failed: ${res.reason ?? ''} / ${res.message ?? ''}`;
+            if (res && typeof res === 'object' && 'ok' in res) {
+				if (res.ok === 'N') {
+					result = `Search Failed: ${res.reason ?? ''} / ${res.message ?? ''}`;
+				} else if (res.ok === 'M') {
+					setMessages((prevMessages) => {
+						const allMessages = [...cloneDeep(prevMessages)];
+						if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {
+							if (allMessages[allMessages.length - 1].pendingAction) {
+								return prevMessages;
+							}
+							allMessages[allMessages.length - 1].pendingAction = allMessages[allMessages.length - 1].action;
+							allMessages[allMessages.length - 1].action = null;
+						}
+						addChatMessage(allMessages);
+						return allMessages;
+					});
+
+					return;
+				}
             }
           }
         } catch (e: any) {
@@ -1096,6 +1115,8 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           const allMessages = [...cloneDeep(prevMessages)];
           if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {
             allMessages[allMessages.length - 1].message += `\n\n${searchQuery}\n\n${result}`;
+			allMessages[allMessages.length - 1].action = null;
+			allMessages[allMessages.length - 1].pendingAction = null;
           }
           addChatMessage(allMessages);
 
@@ -1109,6 +1130,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           await logMessageCompletion('success', userMessage.message, messages()[messages().length - 1]);
         }
         clearChat();
+		setLoading(false);
       })();
       return;
     }
@@ -1913,6 +1935,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
               if (message.fileUploads) chatHistory.fileUploads = message.fileUploads;
               if (message.agentReasoning) chatHistory.agentReasoning = message.agentReasoning;
               if (message.action) chatHistory.action = message.action;
+			  if (message.pendingAction) chatHistory.pendingAction = message.pendingAction;
               if (message.artifacts) chatHistory.artifacts = message.artifacts;
               if (message.followUpPrompts) chatHistory.followUpPrompts = message.followUpPrompts;
               if (message.execution && message.execution.executionData)
@@ -1927,6 +1950,14 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
       const filteredMessages = loadedMessages.filter((message) => message.type !== 'leadCaptureMessage');
       setMessages([...filteredMessages]);
+	  const lastMessage = filteredMessages[filteredMessages.length - 1];
+	  if (lastMessage && lastMessage.type === 'apiMessage' && lastMessage.pendingAction) {
+		  if (props.openBot) {
+			  props.openBot()
+
+			  updateLastMessageAction(lastMessage.pendingAction);
+		  }
+	  }
     }
 
     // Determine if particular chatflow is available for streaming

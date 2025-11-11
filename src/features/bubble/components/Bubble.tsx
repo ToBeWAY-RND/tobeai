@@ -22,6 +22,12 @@ export const Bubble = (props: BubbleProps) => {
     right: bubbleProps.theme?.button?.right ?? 20,
   });
 
+  const loadBot = () => {
+	  if (!isBotStarted()) {
+		  setIsBotStarted(true);
+	  }
+  }
+
   const openBot = () => {
     if (!isBotStarted()) setIsBotStarted(true);
     setIsBotOpened(true);
@@ -75,13 +81,16 @@ export const Bubble = (props: BubbleProps) => {
     const onOpen = () => openBot();
     const onClose = () => closeBot();
     const onToggle = () => toggleBot();
+	const onLoad = () => loadBot();
     window.addEventListener('flowise:open', onOpen);
     window.addEventListener('flowise:close', onClose);
     window.addEventListener('flowise:toggle', onToggle);
+	window.addEventListener('flowise:load', onLoad);
     return () => {
       window.removeEventListener('flowise:open', onOpen);
       window.removeEventListener('flowise:close', onClose);
       window.removeEventListener('flowise:toggle', onToggle);
+	  window.removeEventListener('flowise:load', onLoad);
     };
   });
 
@@ -226,6 +235,7 @@ export const Bubble = (props: BubbleProps) => {
               disclaimer={bubbleProps.theme?.disclaimer}
               dateTimeToggle={bubbleProps.theme?.chatWindow?.dateTimeToggle}
               renderHTML={props.theme?.chatWindow?.renderHTML}
+			  openBot={openBot}
               closeBot={closeBot}
               showCloseButton={bubbleProps.theme?.chatWindow?.showCloseButton}
               useObserverClose={bubbleProps.theme?.chatWindow?.useObserverClose}

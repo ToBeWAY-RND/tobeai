@@ -89,6 +89,15 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
         if (queries.size > 0) {
           parts.push(Array.from(queries).join(', ') + '에 대한 메뉴 검색 중');
         }
+      } else if (name === "class_retriever") {
+        for (const item of items) {
+          if (item.args?.query) {
+            queries.add(`'${item.args.query}'`);
+          }
+        }
+        if (queries.size > 0) {
+          parts.push(Array.from(queries).join(', ') + '에 대한 분류 검색 중');
+        }
       } else if (name === "search_table") {
         for (const item of items) {
           if (item.args?.search_keyword) {
@@ -147,6 +156,24 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
         }
         if (queries.size > 0) {
           parts.push(Array.from(queries).join(', ') + '에 대한 속성 식별 중');
+        }
+      } else if (name === "choose_one_classid") {
+        for (const item of items) {
+          if (item.args?.class_value) {
+            queries.add(`'${item.args.class_value}'`);
+          }
+        }
+        if (queries.size > 0) {
+          parts.push(Array.from(queries).join(', ') + '에 대한 분류 식별 중');
+        }
+      } else if (name === "choose_one_category") {
+        for (const item of items) {
+          if (item.args?.extracted_keyword) {
+            queries.add(`'${item.args.extracted_keyword}'`);
+          }
+        }
+        if (queries.size > 0) {
+          parts.push(Array.from(queries).join(', ') + '에 대한 카테고리 식별 중');
         }
       } else if (name === "choose_one_enum_for_property") {
         if (typeof props.fetchPropName === 'function') {

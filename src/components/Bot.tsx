@@ -909,72 +909,8 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
   };
 
 
-  const updateLastMessageAction = (action: IAction, resolve?: true) => {
+  const updateLastMessageAction = (action: IAction | string) => {
     const parsedAction: IAction = typeof action === 'string' ? JSON.parse(action as any) : action;
-
-    // Handle custom actions
-    if (parsedAction?.action === 'choose_one_property') {
-      const data: any = parsedAction.data || {};
-      const propertyValue: string = data?.property_value ?? '';
-      const propertyIds: Array<{ prop_id: string; prop_field: string }> = data?.property_ids ?? [];
-
-      (async () => {
-        try {
-          if (propertyValue) {
-            const cached = chooseOnePropertyCache()[propertyValue];
-            if (cached) {
-              const humanInput = { ok: true, data: { choice: cached } };
-              await handleSubmit('', parsedAction, humanInput, true);
-              return;
-            }
-          }
-        } catch (e) { /* ignored */ }
-
-        setMessages((prev) => {
-          const all = [...cloneDeep(prev)];
-          const content = `'${propertyValue}'에 해당하는 속성을 선택해주세요.`;
-          if (all.length > 0 && all[all.length - 1].type === 'apiMessage') {
-            const lastIdx = all.length - 1;
-            const prefix = all[lastIdx].message && all[lastIdx].message.length > 0 ? '\n\n' : '';
-            all[lastIdx].message = `${all[lastIdx].message ?? ''}${prefix}${content}`;
-          } else {
-            all.push({ message: content, type: 'apiMessage' });
-          }
-          addChatMessage(all);
-          return all;
-        });
-
-        const getName = botProps.observersConfig?.fetchPropName;
-        const elements: any[] = [];
-        for (const item of propertyIds) {
-          let name = '';
-          try {
-            if (typeof getName === 'function') {
-              const res = await getName(item.prop_id);
-              name = typeof res === 'string' ? res : String(res ?? '');
-            }
-          } catch (e) { /* ignored */ }
-          const label = `[${item.prop_id}] ${name}`.trim();
-          elements.push({ type: 'choose-one-item', label, prop_field: item.prop_field, prop_id: item.prop_id });
-        }
-        
-        // 건너뛰기 버튼 추가
-        elements.push({ type: 'choose-one-skip', label: '건너뛰기', prop_field: 'skip' });
-
-        setMessages((prev) => {
-          const all = [...cloneDeep(prev)];
-          if (all.length > 0) {
-            const lastIdx = all.length - 1;
-            if (all[lastIdx].type === 'apiMessage') {
-              (all[lastIdx] as any).action = { ...parsedAction, elements } as IAction;
-            }
-          }
-          addChatMessage(all);
-          return all;
-        });
-      })();
-      return;
-    }
 
     if (parsedAction?.action === 'choose_one_option') {
       const data: any = parsedAction.data || {};
@@ -985,23 +921,52 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         return s.replace(/%s/g, () => String(args[i++]));
       }
 
+      let prompt: string;
+
       const prompts = {
         'PROP': "'%s'에 해당하는 속성을 선택해주세요",
         'VALUE': "'%s' 속성에 들어갈 값을 선택해주세요",
         'UNIT': "'%s' 속성에 사용할 단위를 선택해주세요",
         'AREATYPE': "'%s'에 해당하는 조직 영역을 선택해주세요",
-        'AREA': "'%s' 조직 영역에 들어갈 값을 선택해주세요"
+        'AREA': "'%s' 조직 영역에 들어갈 값을 선택해주세요",
+        'CLASS': "'%s'에 해당하는 분류를 선택해주세요",
+        'CATEGORY': "'%s'에 해당하는 카테고리를 선택해주세요."
       }
       type PromptKey = keyof typeof prompts;
 
       const promptType = data?.prompt_type as PromptKey;
-      if (!promptType) return;
+      const promptArgs: Array<string> = data?.prompt_args || [];
 
-      const promptArgs: Array<string> | undefined = data?.prompt_args;
-      if (!promptArgs || promptArgs.length == 0) return;
+      if (promptType && promptArgs && promptArgs.length > 0) {
+        prompt = sprintf(prompts[promptType], ...promptArgs);
+      } else {
+        prompt = promptArgs.join(', ') + "에 대한 옵션을 선택해주세요";
+      }
 
-      const prompt = sprintf(prompts[promptType], ...promptArgs);
-      const options = data?.options;
+      let options: any[];
+
+      if (promptType === 'CATEGORY') {
+        const categories: Array<string> = data?.options || [];
+        options = categories.map((category) => {
+          let value: string;
+          if (category === 'CLASS') {
+            value = '분류';
+          } else if (category === 'PROPERTY') {
+            value = '속성';
+          } else if (category === 'AREA') {
+            value = '조직 영역';
+          } else {
+            value = 'UNKNOWN';
+          }
+          return {
+            label: category,
+            value: value
+          }
+        });
+      } else {
+        options = data?.options || [];
+      }
+
       const addNull: boolean = data?.add_null ?? false;
 
       if (!options || (options.length == 0 && !addNull)) return;

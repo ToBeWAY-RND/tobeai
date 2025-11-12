@@ -2295,8 +2295,8 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
   };
 
   const onMicrophoneClicked = () => {
-    setIsRecording(true);
     startAudioRecording(setIsRecording, setRecordingNotSupported, setElapsedTime);
+	setIsRecording(true);
   };
 
   const onRecordingCancelled = () => {
@@ -2313,7 +2313,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
   const getInputDisabled = (): boolean => {
     const messagesArray = messages();
     const disabled =
-      loading() ||
+      loading() || isRecording() ||
       !props.chatflowid ||
       (leadsConfig()?.status && !isLeadSaved()) ||
       (messagesArray[messagesArray.length - 1].action && Object.keys(messagesArray[messagesArray.length - 1].action as any).length > 0);

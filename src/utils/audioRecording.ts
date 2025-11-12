@@ -50,7 +50,7 @@ export function startAudioRecording(
         }
       }
 
-      console.log(error);
+      console.error(error);
 
       //Error handling structure
       switch (error.name) {

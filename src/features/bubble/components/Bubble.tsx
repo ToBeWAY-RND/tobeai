@@ -31,10 +31,12 @@ export const Bubble = (props: BubbleProps) => {
   const openBot = () => {
     if (!isBotStarted()) setIsBotStarted(true);
     setIsBotOpened(true);
+    window.dispatchEvent(new CustomEvent('flowise:state-change', { detail: { isOpen: true } }));
   };
 
   const closeBot = () => {
     setIsBotOpened(false);
+    window.dispatchEvent(new CustomEvent('flowise:state-change', { detail: { isOpen: false } }));
   };
 
   const toggleBot = () => {

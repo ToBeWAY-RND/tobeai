@@ -1,44 +1,44 @@
-import { createSignal, createEffect, For, onMount, Show, mergeProps, on, createMemo } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, mergeProps, on, onMount, Show } from 'solid-js';
 import { v4 as uuidv4 } from 'uuid';
 import {
+  createAttachmentWithFormData,
+  FeedbackRatingType,
+  getChatbotConfig,
+  IncomingInput,
+  isStreamAvailableQuery,
+  sendMessageLog,
   sendMessageQuery,
   upsertVectorStoreWithFormData,
-  isStreamAvailableQuery,
-  IncomingInput,
-  getChatbotConfig,
-  FeedbackRatingType,
-  createAttachmentWithFormData,
-  sendMessageLog,
 } from '@/queries/sendMessageQuery';
-import { TextInput, ComboBox, Slider } from './inputs';
+import { ComboBox, Slider, TextInput } from './inputs';
 import { GuestBubble } from './bubbles/GuestBubble';
 import { BotBubble } from './bubbles/BotBubble';
 import { LoadingBubble } from './bubbles/LoadingBubble';
 import { StarterPromptBubble } from './bubbles/StarterPromptBubble';
 import {
   BotMessageTheme,
+  ComboBoxTheme,
+  DateTimeToggleTheme,
+  DisclaimerPopUpTheme,
+  FeedbackTheme,
   FooterTheme,
+  SliderTheme,
   TextInputTheme,
   UserMessageTheme,
-  FeedbackTheme,
-  DisclaimerPopUpTheme,
-  DateTimeToggleTheme,
-  ComboBoxTheme,
-  SliderTheme,
 } from '@/features/bubble/types';
 import { Badge } from './Badge';
-import { Popup, DisclaimerPopup } from '@/features/popup';
+import { DisclaimerPopup, Popup } from '@/features/popup';
 import { Avatar } from '@/components/avatars/Avatar';
-import { DeleteButton, SendButton, CloseButton } from '@/components/buttons/SendButton';
+import { CloseButton, DeleteButton, SendButton } from '@/components/buttons/SendButton';
 import { FilePreview } from '@/components/inputs/textInput/components/FilePreview';
 import { CircleDotIcon, SparklesIcon, TrashIcon } from './icons';
 import { CancelButton } from './buttons/CancelButton';
 import { cancelAudioRecording, startAudioRecording, stopAudioRecording } from '@/utils/audioRecording';
 import { LeadCaptureBubble } from '@/components/bubbles/LeadCaptureBubble';
-import { removeLocalStorageChatHistory, getLocalStorageChatflow, setLocalStorageChatflow, setCookie, getCookie } from '@/utils';
+import { getCookie, getLocalStorageChatflow, removeLocalStorageChatHistory, setCookie, setLocalStorageChatflow } from '@/utils';
 import { cloneDeep } from 'lodash';
 import { FollowUpPromptBubble } from '@/components/bubbles/FollowUpPromptBubble';
-import { fetchEventSource, EventStreamContentType } from '@microsoft/fetch-event-source';
+import { EventStreamContentType, fetchEventSource } from '@microsoft/fetch-event-source';
 
 export type FileEvent<T = EventTarget> = {
   target: T;
@@ -103,6 +103,7 @@ export type IAction = {
     reject: string;
     toolCalls: any[];
   };
+  allowInput?: boolean;
 };
 
 export type FileUpload = Omit<FilePreview, 'preview'>;
@@ -528,11 +529,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     return undefined;
   };
 
-  const logMessageCompletion = async (
-    status: 'success' | 'abort' | 'error',
-    question?: string,
-    msgOverride?: Partial<MessageType>,
-  ) => {
+  const logMessageCompletion = async (status: 'success' | 'abort' | 'error', question?: string, msgOverride?: Partial<MessageType>) => {
     try {
       // Skip logging if the target AI message is the very first message (starter/welcome message)
       const allMsgs = messages();
@@ -551,7 +548,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       const aimlHost: string | undefined = vars.aimlUrl;
       const msg: any = candidate;
       const payload: any = {
-        apiHost: props.apiHost || "",
+        apiHost: props.apiHost || '',
         question: question,
         chatId: chatId(),
         dateTime: msg?.dateTime || new Date().toISOString(),
@@ -579,50 +576,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
   };
 
   /**
-   * Normalize consecutive AI messages into a single message and persist chat history.
-   */
-  const normalizeConsecutiveAIMessages = (list: MessageType[]) => {
-    if (!Array.isArray(list) || list.length === 0) return list;
-    const result: MessageType[] = [];
-
-    let i = 0;
-    while (i < list.length) {
-      const current = list[i];
-      if (current.type !== 'apiMessage') {
-        result.push(current);
-        i += 1;
-        continue;
-      }
-      // Start a run of consecutive apiMessages
-      const run: MessageType[] = [current];
-      let j = i + 1;
-      while (j < list.length && list[j].type === 'apiMessage') {
-        run.push(list[j]);
-        j += 1;
-      }
-      if (run.length === 1) {
-        result.push(current);
-      } else {
-        // Merge: use the last message object for metadata, concatenate messages
-        const last = run[run.length - 1] as any;
-        const mergedText = run
-          .map((m) => (m?.message ?? '').trim())
-          .filter((t) => t.length > 0)
-          .join('\n\n');
-        const merged: any = { ...last };
-        merged.message = mergedText;
-        // Ensure the message id fields are from the last one
-        if (last?.id) merged.id = last.id;
-        if (last?.messageId) merged.messageId = last.messageId;
-        result.push(merged as MessageType);
-      }
-      i = j;
-    }
-
-    return result;
-  };
-
-  /**
    * Add each chat message into localStorage
    */
   const addChatMessage = (allMessage: MessageType[]) => {
@@ -640,7 +593,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     setLocalStorageChatflow(props.chatflowid, chatId(), { chatHistory: messages });
   };
 
-
   // Define the audioRef
   let audioRef: HTMLAudioElement | undefined;
   // CDN link for default receive sound
@@ -657,7 +609,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
   };
 
   let hasSoundPlayed = false;
-
 
   const updateLastMessage = (text: string) => {
     setMessages((prevMessages) => {
@@ -696,7 +647,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         }
       }
 
-
       last.rating = undefined;
       last.dateTime = new Date().toISOString();
       if (!hasSoundPlayed) {
@@ -714,7 +664,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       const content = props.errorMessage || errorMessage;
       if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {
         const last = allMessages[allMessages.length - 1];
-        const prefix = (last.message && last.message.length > 0) ? '\n\n' : '';
+        const prefix = last.message && last.message.length > 0 ? '\n\n' : '';
         last.message = `${last.message ?? ''}${prefix}${content}`;
       } else {
         allMessages.push({ message: content, type: 'apiMessage' });
@@ -908,10 +858,8 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     });
   };
 
-
   const updateLastMessageAction = (action: IAction | string) => {
     const parsedAction: IAction = typeof action === 'string' ? JSON.parse(action as any) : action;
-
     if (parsedAction?.action === 'choose_one_option') {
       const data: any = parsedAction.data || {};
 
@@ -919,19 +867,19 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         // Only %s works
         let i = 0;
         return s.replace(/%s/g, () => String(args[i++]));
-      }
+      };
 
       let prompt: string;
 
       const prompts = {
-        'PROP': "'%s'에 해당하는 속성을 선택해주세요",
-        'VALUE': "'%s' 속성에 들어갈 값을 선택해주세요",
-        'UNIT': "'%s' 속성에 사용할 단위를 선택해주세요",
-        'AREATYPE': "'%s'에 해당하는 조직 영역을 선택해주세요",
-        'AREA': "'%s' 조직 영역에 들어갈 값을 선택해주세요",
-        'CLASS': "'%s'에 해당하는 분류를 선택해주세요",
-        'CATEGORY': "'%s'에 해당하는 카테고리를 선택해주세요."
-      }
+        PROP: "'%s'에 해당하는 속성을 선택해주세요",
+        VALUE: "'%s' 속성에 들어갈 값을 선택해주세요",
+        UNIT: "'%s' 속성에 사용할 단위를 선택해주세요",
+        AREATYPE: "'%s'에 해당하는 조직 영역을 선택해주세요",
+        AREA: "'%s' 조직 영역에 들어갈 값을 선택해주세요",
+        CLASS: "'%s'에 해당하는 분류를 선택해주세요",
+        CATEGORY: "'%s'에 해당하는 카테고리를 선택해주세요.",
+      };
       type PromptKey = keyof typeof prompts;
 
       const promptType = data?.prompt_type as PromptKey;
@@ -940,38 +888,49 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       if (promptType && promptArgs && promptArgs.length > 0) {
         prompt = sprintf(prompts[promptType], ...promptArgs);
       } else {
-        prompt = promptArgs.join(', ') + "에 대한 옵션을 선택해주세요";
+        prompt = promptArgs.join(', ') + '에 대한 옵션을 선택해주세요';
       }
 
       let options: any[];
 
       if (promptType === 'CATEGORY') {
         const categories: Array<string> = data?.options || [];
-        options = categories.map((category) => {
-          let value: string;
-          if (category === 'CLASS') {
-            value = '분류';
-          } else if (category === 'PROPERTY') {
-            value = '속성';
-          } else if (category === 'AREA') {
-            value = '조직 영역';
-          } else {
-            value = 'UNKNOWN';
-          }
-          return {
-            label: category,
-            value: value
-          }
-        });
+        options = categories
+          .map((category) => {
+            let label: string | null;
+            if (category === 'CLASS') {
+              label = '분류';
+            } else if (category === 'PROPERTY') {
+              label = '속성';
+            } else if (category === 'AREA') {
+              label = '조직 영역';
+            } else {
+              label = null;
+            }
+            return {
+              label: label,
+              type: category,
+            };
+          })
+          .filter((option) => option.label !== null);
       } else {
         options = data?.options || [];
       }
 
       const addNull: boolean = data?.add_null ?? false;
-
       if (!options || (options.length == 0 && !addNull)) return;
 
-      const cacheKey = promptType + ':' + promptArgs.join('|');
+      if (addNull) {
+        // Null 버튼 추가
+        options.push({ type: '__NULL__', label: '값 없음' });
+      }
+
+      const concat_options = options
+        .map((option) => option.type)
+        .sort()
+        .join(',');
+
+      const cacheKey = promptType + ':' + promptArgs.join('|') + ':' + concat_options;
 
       (async () => {
         try {
@@ -981,7 +940,9 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
             await handleSubmit('', parsedAction, humanInput, true);
             return;
           }
-        } catch (e) { /* ignored */ }
+        } catch (e) {
+          /* ignored */
+        }
 
         setMessages((prev) => {
           const all = [...cloneDeep(prev)];
@@ -996,11 +957,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           return all;
         });
 
-        if (addNull) {
-          // Null 버튼 추가
-          options.push({ type: '__NULL__', label: '값 없음' });
-        }
-
         // 건너뛰기 버튼 추가
         options.push({ type: 'skip', label: '건너뛰기' });
 
@@ -1009,7 +965,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           if (all.length > 0) {
             const lastIdx = all.length - 1;
             if (all[lastIdx].type === 'apiMessage') {
-              (all[lastIdx] as any).action = { ...parsedAction, elements: options, cacheKey: cacheKey } as IAction;
+              (all[lastIdx] as any).action = { ...parsedAction, elements: options, cacheKey: cacheKey, allowInput: true } as IAction;
             }
           }
           addChatMessage(all);
@@ -1044,7 +1000,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
       // applySearch 호출 후 결과 전송
       (async () => {
-        let result = "Search Completed";
+        let result = 'Search Completed';
         if (props.closeBot) {
           props.closeBot();
         }
@@ -1053,24 +1009,24 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           if (typeof applySearchFn === 'function') {
             const res = await applySearchFn(data);
             if (res && typeof res === 'object' && 'ok' in res) {
-				if (res.ok === 'N') {
-					result = `Search Failed: ${res.reason ?? ''} / ${res.message ?? ''}`;
-				} else if (res.ok === 'M') {
-					setMessages((prevMessages) => {
-						const allMessages = [...cloneDeep(prevMessages)];
-						if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {
-							if (allMessages[allMessages.length - 1].pendingAction) {
-								return prevMessages;
-							}
-							allMessages[allMessages.length - 1].pendingAction = allMessages[allMessages.length - 1].action;
-							allMessages[allMessages.length - 1].action = null;
-						}
-						addChatMessage(allMessages);
-						return allMessages;
-					});
+              if (res.ok === 'N') {
+                result = `Search Failed: ${res.reason ?? ''} / ${res.message ?? ''}`;
+              } else if (res.ok === 'M') {
+                setMessages((prevMessages) => {
+                  const allMessages = [...cloneDeep(prevMessages)];
+                  if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {
+                    if (allMessages[allMessages.length - 1].pendingAction) {
+                      return prevMessages;
+                    }
+                    allMessages[allMessages.length - 1].pendingAction = allMessages[allMessages.length - 1].action;
+                    allMessages[allMessages.length - 1].action = null;
+                  }
+                  addChatMessage(allMessages);
+                  return allMessages;
+                });
 
-					return;
-				}
+                return;
+              }
             }
           }
         } catch (e: any) {
@@ -1081,8 +1037,8 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           const allMessages = [...cloneDeep(prevMessages)];
           if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {
             allMessages[allMessages.length - 1].message += `\n\n${searchQuery}\n\n${result}`;
-			allMessages[allMessages.length - 1].action = null;
-			allMessages[allMessages.length - 1].pendingAction = null;
+            allMessages[allMessages.length - 1].action = null;
+            allMessages[allMessages.length - 1].pendingAction = null;
           }
           addChatMessage(allMessages);
 
@@ -1096,7 +1052,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           await logMessageCompletion('success', userMessage.message, messages()[messages().length - 1]);
         }
         clearChat();
-		setLoading(false);
+        setLoading(false);
       })();
       return;
     }
@@ -1129,7 +1085,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       const allMessages: MessageType[] = [...cloneDeep(prevMessages)];
       if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {
         const last = allMessages[allMessages.length - 1];
-        const prefix = (last.message && last.message.length > 0) ? '\n\n' : '';
+        const prefix = last.message && last.message.length > 0 ? '\n\n' : '';
         last.message = `${last.message ?? ''}${prefix}${errMessage}`;
       } else {
         allMessages.push({ message: errMessage, type: 'apiMessage' });
@@ -1351,8 +1307,8 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
   const closeResponse = () => {
     setUserInput('');
     setUploadedFiles([]);
-    hasSoundPlayed = false
-    
+    hasSoundPlayed = false;
+
     // Force BotBubble refresh by updating the last message
     setMessages((prevMessages) => {
       const allMessages = [...cloneDeep(prevMessages)];
@@ -1361,12 +1317,12 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         allMessages[allMessages.length - 1] = {
           ...allMessages[allMessages.length - 1],
           // Force refresh by adding a timestamp to trigger reactivity
-          refreshTrigger: Date.now()
+          refreshTrigger: Date.now(),
         };
       }
       return allMessages;
     });
-    
+
     setTimeout(() => {
       scrollToBottom();
     }, 100);
@@ -1527,17 +1483,41 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
     if (leadEmail()) body.leadEmail = leadEmail();
 
-    if (action) body.action = action;
-
     if (humanInput) body.humanInput = humanInput;
 
     if ((props.chatflowConfig?.vars as any)?.isFastMode === 'Y') {
-      if (props.closeBot) props.closeBot()
+      if (props.closeBot) props.closeBot();
 
       if (props.observersConfig?.disableButton) {
         props.observersConfig.disableButton();
       } else if (props.disableButton) {
         props.disableButton();
+      }
+    }
+
+    if (action) {
+      body.action = action;
+    } else if (messages().length > 1) {
+      const lastMessage = messages()[messages().length - 2];
+      if (lastMessage.action) {
+        body.action = lastMessage.action;
+		  setMessages((data) => {
+			  const updated = data.map((item, i) => {
+				  if (i === data.length - 2) {
+					  return { ...item, action: null };
+				  }
+				  return item;
+			  });
+			  addChatMessage(updated);
+			  return [...updated];
+		  });
+
+		  body.humanInput = {
+			  ok: false,
+			  data: {
+				  humanInput: value,
+			  },
+		  };
       }
     }
 
@@ -1639,7 +1619,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
             return allMessages;
           });
           // Log success for sync response
-          await logMessageCompletion('success', typeof value === 'string' ? (value as string) : undefined, newMessage);
+          await logMessageCompletion('success', value, newMessage);
 
           updateMetadata(data, value);
         }
@@ -1652,7 +1632,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       if (result.error) {
         const error = result.error;
         console.error(error);
-        await logMessageCompletion('error', typeof value === 'string' ? (value as string) : undefined);
+        await logMessageCompletion('error', value);
         if (typeof error === 'object') {
           handleError(`Error: ${error?.message.replaceAll('Error:', ' ')}`);
           return;
@@ -1744,7 +1724,9 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           const choice = elem?.prop_field ?? 'skip';
           setChooseOnePropertyCache((prev) => ({ ...prev, [key]: choice }));
         }
-      } catch (e) { /* ignore */ }
+      } catch (e) {
+        /* ignore */
+      }
 
       setMessages((prev) => {
         const all = [...cloneDeep(prev)];
@@ -1770,7 +1752,9 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         const choice: string = elem?.type;
         try {
           setChooseOneOptionCache((prev) => ({ ...prev, [key]: choice }));
-        } catch (e) { /* ignore */ }
+        } catch (e) {
+          /* ignore */
+        }
       }
 
       setMessages((prev) => {
@@ -1791,7 +1775,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       return;
     }
 
-
     await handleSubmit(elem.label, action);
   };
 
@@ -1808,7 +1791,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       const messages: MessageType[] = [
         {
           message: props.welcomeMessage ?? defaultWelcomeMessage,
-          type: 'apiMessage'
+          type: 'apiMessage',
         },
       ];
       if (leadsConfig()?.status && !getLocalStorageChatflow(props.chatflowid)?.lead) {
@@ -1901,7 +1884,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
               if (message.fileUploads) chatHistory.fileUploads = message.fileUploads;
               if (message.agentReasoning) chatHistory.agentReasoning = message.agentReasoning;
               if (message.action) chatHistory.action = message.action;
-			  if (message.pendingAction) chatHistory.pendingAction = message.pendingAction;
+              if (message.pendingAction) chatHistory.pendingAction = message.pendingAction;
               if (message.artifacts) chatHistory.artifacts = message.artifacts;
               if (message.followUpPrompts) chatHistory.followUpPrompts = message.followUpPrompts;
               if (message.execution && message.execution.executionData)
@@ -1916,19 +1899,19 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
       const filteredMessages = loadedMessages.filter((message) => message.type !== 'leadCaptureMessage');
       setMessages([...filteredMessages]);
-	  const lastMessage = filteredMessages[filteredMessages.length - 1];
-	  if (lastMessage && lastMessage.type === 'apiMessage' && lastMessage.pendingAction) {
-		  if (props.openBot && props.observersConfig?.disableButton) {
-			  props.openBot()
-			  props.observersConfig.disableButton();
-			  updateLastMessageAction(lastMessage.pendingAction);
-		  }
-	  } else {
-		  if (props.observersConfig?.enableButton) props.observersConfig.enableButton();
-	  }
+      const lastMessage = filteredMessages[filteredMessages.length - 1];
+      if (lastMessage && lastMessage.type === 'apiMessage' && lastMessage.pendingAction) {
+        if (props.openBot && props.observersConfig?.disableButton) {
+          props.openBot();
+          props.observersConfig.disableButton();
+          updateLastMessageAction(lastMessage.pendingAction);
+        }
+      } else {
+        if (props.observersConfig?.enableButton) props.observersConfig.enableButton();
+      }
     } else {
-		if (props.observersConfig?.enableButton) props.observersConfig.enableButton();
-	}
+      if (props.observersConfig?.enableButton) props.observersConfig.enableButton();
+    }
 
     // Determine if particular chatflow is available for streaming
     const { data } = await isStreamAvailableQuery({
@@ -1960,41 +1943,41 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
           const formInputTypes = startNode.data.inputs?.formInputTypes;
           /* example:
-          "formInputTypes": [
-              {
-                "type": "string",
-                "label": "From",
-                "name": "from",
-                "addOptions": ""
-              },
-              {
-                "type": "number",
-                "label": "Subject",
-                "name": "subject",
-                "addOptions": ""
-              },
-              {
-                "type": "boolean",
-                "label": "Body",
-                "name": "body",
-                "addOptions": ""
-              },
-              },
-              {
-                "type": "options",
-                "label": "Choices",
-                "name": "choices",
-                "addOptions": [
-                  {
-                    "option": "choice 1"
-                  },
-                  {
-                    "option": "choice 2"
-                  }
-                ]
-              }
-            ]
-          */
+		  "formInputTypes": [
+			  {
+				"type": "string",
+				"label": "From",
+				"name": "from",
+				"addOptions": ""
+			  },
+			  {
+				"type": "number",
+				"label": "Subject",
+				"name": "subject",
+				"addOptions": ""
+			  },
+			  {
+				"type": "boolean",
+				"label": "Body",
+				"name": "body",
+				"addOptions": ""
+			  },
+			  },
+			  {
+				"type": "options",
+				"label": "Choices",
+				"name": "choices",
+				"addOptions": [
+				  {
+					"option": "choice 1"
+				  },
+				  {
+					"option": "choice 2"
+				  }
+				]
+			  }
+			]
+		  */
           if (startInputType === 'formInput' && formInputTypes && formInputTypes.length > 0) {
             for (const formInputType of formInputTypes) {
               if (formInputType.type === 'options') {
@@ -2296,7 +2279,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
   const onMicrophoneClicked = () => {
     startAudioRecording(setIsRecording, setRecordingNotSupported, setElapsedTime);
-	setIsRecording(true);
+    setIsRecording(true);
   };
 
   const onRecordingCancelled = () => {
@@ -2312,15 +2295,10 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
   const getInputDisabled = (): boolean => {
     const messagesArray = messages();
-    const disabled =
-      loading() || isRecording() ||
-      !props.chatflowid ||
-      (leadsConfig()?.status && !isLeadSaved()) ||
-      (messagesArray[messagesArray.length - 1].action && Object.keys(messagesArray[messagesArray.length - 1].action as any).length > 0);
-    if (disabled) {
-      return true;
-    }
-    return false;
+    const action = messagesArray[messagesArray.length - 1]?.action;
+    const hasAction = !!(action && Object.keys(action).length > 0 && !action.allowInput);
+
+    return loading() || isRecording() || !props.chatflowid || (leadsConfig()?.status && !isLeadSaved()) || hasAction;
   };
 
   createEffect(
@@ -2342,7 +2320,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
   const ModelComboBox = () => {
     return (
-      <div class={`flex items-center ${(props.isFullPage? 'px-3' : 'px-1.5')} space-x-3`}>
+      <div class={`flex items-center ${props.isFullPage ? 'px-3' : 'px-1.5'} space-x-3`}>
         <ComboBox
           options={props.gptModels?.values || []}
           label={props.gptModels?.label}
@@ -2355,18 +2333,21 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           }}
           style={{ width: 'auto' }}
         />
-		  {!botProps.isFullPage && props.fastMode && (
-			  <Slider
-				label={props.fastMode.label}
-				defaultValue={((props.chatflowConfig?.vars as any)?.isFastMode && (props.chatflowConfig?.vars as any).isFastMode === 'Y') ?? props.fastMode.defaultValue ?? false}
-				onColor={props.fastMode.onColor ?? props.titleBackgroundColor}
-        offColor={props.fastMode.offColor}
-				onChange={(value: boolean) => {
-					if (props.chatflowConfig?.vars as any)
-						(props.chatflowConfig?.vars as any).isFastMode = value ? 'Y' : 'N';
-				}}
-			  />
-		  )}
+        {!botProps.isFullPage && props.fastMode && (
+          <Slider
+            label={props.fastMode.label}
+            defaultValue={
+              ((props.chatflowConfig?.vars as any)?.isFastMode && (props.chatflowConfig?.vars as any).isFastMode === 'Y') ??
+              props.fastMode.defaultValue ??
+              false
+            }
+            onColor={props.fastMode.onColor ?? props.titleBackgroundColor}
+            offColor={props.fastMode.offColor}
+            onChange={(value: boolean) => {
+              if (props.chatflowConfig?.vars as any) (props.chatflowConfig?.vars as any).isFastMode = value ? 'Y' : 'N';
+            }}
+          />
+        )}
       </div>
     );
   };
@@ -2529,7 +2510,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
               class="absolute top-[35px] left-0 right-0 z-10 flex items-center justify-end h-[40px] px-1"
               style={{ 'background-color': props.backgroundColor || defaultBackgroundColor }}
             >
-				
               <ModelComboBox />
             </div>
           ) : null}
@@ -2698,7 +2678,9 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                     </div>
                   ) : (
                     <div
-                      class={`h-auto max-h-[192px] ${props.isFullPage ? 'min-h-[56px]' : 'min-h-[50px]'} flex items-center justify-between chatbot-input border border-[#eeeeee]`}
+                      class={`h-auto max-h-[192px] ${
+                        props.isFullPage ? 'min-h-[56px]' : 'min-h-[50px]'
+                      } flex items-center justify-between chatbot-input border border-[#eeeeee]`}
                       data-testid="input"
                       style={{
                         margin: 'auto',
@@ -2719,7 +2701,8 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                           type="button"
                           class={`m-0 ${props.isFullPage ? 'h-14' : 'h-[50px]'} flex items-center justify-center`}
                           isFullPage={props.isFullPage}
-                          on:click={onRecordingCancelled}>
+                          on:click={onRecordingCancelled}
+                        >
                           <span style={{ 'font-family': 'Poppins, sans-serif' }}>Send</span>
                         </CancelButton>
                         <SendButton
@@ -2727,8 +2710,10 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                           sendButtonSrc={props.textInput?.sendButtonSrc}
                           type="button"
                           isDisabled={loading()}
-                          class={`m-0 ${props.isFullPage ? 'h-14' : 'h-[50px]'} flex items-center justify-center ${(uploadsConfig()?.isSpeechToTextEnabled) ? (props.isFullPage ? 'pl-3 pr-4' : 'pl-1.5 pr-4') : 'px-4'}`}
-                          width={props.isFullPage ? '24px' : '26px' }
+                          class={`m-0 ${props.isFullPage ? 'h-14' : 'h-[50px]'} flex items-center justify-center ${
+                            uploadsConfig()?.isSpeechToTextEnabled ? (props.isFullPage ? 'pl-3 pr-4' : 'pl-1.5 pr-4') : 'px-4'
+                          }`}
+                          width={props.isFullPage ? '24px' : '26px'}
                           on:click={onRecordingStopped}
                         >
                           <span style={{ 'font-family': 'Poppins, sans-serif' }}>Send</span>

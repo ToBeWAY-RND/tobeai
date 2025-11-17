@@ -1036,8 +1036,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           success = false;
         }
 
-        console.log('applySearch', data, success);
-
         setMessages((prevMessages) => {
           const allMessages = [...cloneDeep(prevMessages)];
           if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {

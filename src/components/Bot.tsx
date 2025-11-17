@@ -1246,18 +1246,12 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
             updateErrorMessage(payload.data);
             await logMessageCompletion('error', input);
             setCalledTools([]);
-            if ((props.chatflowConfig?.vars as any)?.isFastMode === 'Y' && props.observersConfig?.alertAgentError) {
-              props.observersConfig.alertAgentError();
-            }
             break;
           case 'abort':
             abortMessage();
             await logMessageCompletion('abort', input);
             setCalledTools([]);
             closeResponse();
-            if ((props.chatflowConfig?.vars as any)?.isFastMode === 'Y' && props.observersConfig?.alertAgentError) {
-              props.observersConfig.alertAgentError();
-            }
             break;
           case 'end':
             setLocalStorageChatflow(chatflowid, chatId);
@@ -1289,9 +1283,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         logMessageCompletion('error', input).catch((e) => console.error('logMessageCompletion failed', e));
         setLoading(false);
         closeResponse();
-        if ((props.chatflowConfig?.vars as any)?.isFastMode === 'Y' && props.observersConfig?.alertAgentError) {
-          props.observersConfig.alertAgentError();
-        }
         throw err;
       },
     });

@@ -139,6 +139,7 @@ export type MessageType = {
   followUpPrompts?: string;
   dateTime?: string;
   refreshTrigger?: number;
+  search?: any;
 };
 
 type IUploads = {
@@ -562,6 +563,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         mdmModule: vars?.mdmModule,
         thoughts: msg?.thoughts,
         menuId: vars?.menuId,
+        search: msg?.search,
         status,
       };
       await sendMessageLog({
@@ -996,21 +998,21 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         return all;
       });
 
-      const searchQuery = JSON.stringify(data);
-
       // applySearch 호출 후 결과 전송
       (async () => {
-        let result = 'Search Completed';
+        let success = true;
         if (props.closeBot) {
           props.closeBot();
         }
+
         try {
           const applySearchFn = botProps.observersConfig?.applySearch;
           if (typeof applySearchFn === 'function') {
             const res = await applySearchFn(data);
             if (res && typeof res === 'object' && 'ok' in res) {
               if (res.ok === 'N') {
-                result = `Search Failed: ${res.reason ?? ''} / ${res.message ?? ''}`;
+                data.error = res;
+                success = false;
               } else if (res.ok === 'M') {
                 setMessages((prevMessages) => {
                   const allMessages = [...cloneDeep(prevMessages)];
@@ -1030,13 +1032,16 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
             }
           }
         } catch (e: any) {
-          result = `Search Failed: ${e.message ?? ''}`;
+          data.error = { ok: 'N', message: e.message };
+          success = false;
         }
+
+        console.log('applySearch', data, success);
 
         setMessages((prevMessages) => {
           const allMessages = [...cloneDeep(prevMessages)];
           if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {
-            allMessages[allMessages.length - 1].message += `\n\n${searchQuery}\n\n${result}`;
+            allMessages[allMessages.length - 1].search = data;
             allMessages[allMessages.length - 1].action = null;
             allMessages[allMessages.length - 1].pendingAction = null;
           }
@@ -1045,14 +1050,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           return allMessages;
         });
 
-        const userMessage = messages()[messages().length - 2];
-        const currMessage = messages()[messages().length - 1];
-
-        if (userMessage.type === 'userMessage' && currMessage.type === 'apiMessage') {
-          await logMessageCompletion('success', userMessage.message, messages()[messages().length - 1]);
-        }
-        clearChat();
-        setLoading(false);
+        await handleSubmit('', parsedAction, { ok: success }, true);
       })();
       return;
     }
@@ -1252,7 +1250,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
             setCalledTools([]);
             if ((props.chatflowConfig?.vars as any)?.isFastMode === 'Y' && props.observersConfig?.alertAgentError) {
               props.observersConfig.alertAgentError();
-              clearChat();
             }
             break;
           case 'abort':
@@ -1262,7 +1259,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
             closeResponse();
             if ((props.chatflowConfig?.vars as any)?.isFastMode === 'Y' && props.observersConfig?.alertAgentError) {
               props.observersConfig.alertAgentError();
-              clearChat();
             }
             break;
           case 'end':
@@ -1297,7 +1293,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         closeResponse();
         if ((props.chatflowConfig?.vars as any)?.isFastMode === 'Y' && props.observersConfig?.alertAgentError) {
           props.observersConfig.alertAgentError();
-          clearChat();
         }
         throw err;
       },
@@ -1501,23 +1496,23 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       const lastMessage = messages()[messages().length - 2];
       if (lastMessage.action) {
         body.action = lastMessage.action;
-		  setMessages((data) => {
-			  const updated = data.map((item, i) => {
-				  if (i === data.length - 2) {
-					  return { ...item, action: null };
-				  }
-				  return item;
-			  });
-			  addChatMessage(updated);
-			  return [...updated];
-		  });
+        setMessages((data) => {
+          const updated = data.map((item, i) => {
+            if (i === data.length - 2) {
+              return { ...item, action: null };
+            }
+            return item;
+          });
+          addChatMessage(updated);
+          return [...updated];
+        });
 
-		  body.humanInput = {
-			  ok: false,
-			  data: {
-				  humanInput: value,
-			  },
-		  };
+        body.humanInput = {
+          ok: false,
+          data: {
+            humanInput: value,
+          },
+        };
       }
     }
 
@@ -1899,18 +1894,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
       const filteredMessages = loadedMessages.filter((message) => message.type !== 'leadCaptureMessage');
       setMessages([...filteredMessages]);
-      const lastMessage = filteredMessages[filteredMessages.length - 1];
-      if (lastMessage && lastMessage.type === 'apiMessage' && lastMessage.pendingAction) {
-        if (props.openBot && props.observersConfig?.disableButton) {
-          props.openBot();
-          props.observersConfig.disableButton();
-          updateLastMessageAction(lastMessage.pendingAction);
-        }
-      } else {
-        if (props.observersConfig?.enableButton) props.observersConfig.enableButton();
-      }
-    } else {
-      if (props.observersConfig?.enableButton) props.observersConfig.enableButton();
     }
 
     // Determine if particular chatflow is available for streaming
@@ -2027,6 +2010,18 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           setFullFileUploadAllowedTypes(chatbotConfig.fullFileUpload?.allowedUploadFileTypes);
         }
       }
+    }
+
+    const lastMessage = messages()[messages().length - 1];
+    if (lastMessage && lastMessage.type === 'apiMessage' && lastMessage.pendingAction) {
+      if (props.openBot && props.observersConfig?.disableButton) {
+        props.openBot();
+        props.observersConfig.disableButton();
+
+        updateLastMessageAction(lastMessage.pendingAction);
+      }
+    } else {
+      if (props.observersConfig?.enableButton) props.observersConfig.enableButton();
     }
 
     // eslint-disable-next-line solid/reactivity

@@ -154,6 +154,4 @@ export type SliderTheme = {
   defaultValue?: boolean;
   onColor?: string;
   offColor?: string;
-  completeMessage?: string;
-  errorMessage?: string;
 }

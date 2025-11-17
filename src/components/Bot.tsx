@@ -1506,7 +1506,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         });
 
         body.humanInput = {
-          ok: false,
+          status: "human_input_detected",
           data: {
             humanInput: value,
           },

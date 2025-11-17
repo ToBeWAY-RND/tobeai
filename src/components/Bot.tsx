@@ -1478,16 +1478,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
     if (humanInput) body.humanInput = humanInput;
 
-    if ((props.chatflowConfig?.vars as any)?.isFastMode === 'Y') {
-      if (props.closeBot) props.closeBot();
-
-      if (props.observersConfig?.disableButton) {
-        props.observersConfig.disableButton();
-      } else if (props.disableButton) {
-        props.disableButton();
-      }
-    }
-
     if (action) {
       body.action = action;
     } else if (messages().length > 1) {

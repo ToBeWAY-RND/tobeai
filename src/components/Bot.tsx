@@ -164,6 +164,7 @@ export type observersConfigType = {
   fetchPropName?: (propId: string) => Promise<string> | string;
   fetchAreaTypeName?: (areaType: string) => Promise<string>;
   applySearch?: (data: any) => Promise<{ ok: boolean; error?: string } | { ok: false; error: string } | any>;
+  applyExtraVars?: () => Record<string, string>;
 };
 
 export type BotProps = {
@@ -1464,6 +1465,15 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     if (uploads && uploads.length > 0) body.uploads = uploads;
 
     if (props.chatflowConfig) body.overrideConfig = props.chatflowConfig;
+
+    if (props.observersConfig?.applyExtraVars && !noUserMessage) {
+      if (!body.overrideConfig) body.overrideConfig = {};
+      if (!body.overrideConfig.vars) body.overrideConfig.vars = {};
+
+      const extraVars = props.observersConfig.applyExtraVars();
+
+      body.overrideConfig.vars = { ...((body.overrideConfig as any).vars ), ...extraVars };
+    }
 
     if (leadEmail()) body.leadEmail = leadEmail();
 

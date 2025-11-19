@@ -36,7 +36,7 @@ import { CancelButton } from './buttons/CancelButton';
 import { cancelAudioRecording, startAudioRecording, stopAudioRecording } from '@/utils/audioRecording';
 import { LeadCaptureBubble } from '@/components/bubbles/LeadCaptureBubble';
 import { getCookie, getLocalStorageChatflow, removeLocalStorageChatHistory, setCookie, setLocalStorageChatflow } from '@/utils';
-import { cloneDeep } from 'lodash';
+import { cloneDeep, last} from 'lodash';
 import { FollowUpPromptBubble } from '@/components/bubbles/FollowUpPromptBubble';
 import { EventStreamContentType, fetchEventSource } from '@microsoft/fetch-event-source';
 
@@ -140,6 +140,7 @@ export type MessageType = {
   dateTime?: string;
   refreshTrigger?: number;
   search?: any;
+  inputs?: any;
 };
 
 type IUploads = {
@@ -163,7 +164,8 @@ export type observersConfigType = {
   alertAgentError?: () => void;
   fetchPropName?: (propId: string) => Promise<string> | string;
   fetchAreaTypeName?: (areaType: string) => Promise<string>;
-  applySearch?: (data: any) => Promise<{ ok: boolean; error?: string } | { ok: false; error: string } | any>;
+  applySearch?: (data: any) => Promise<any>;
+  applyInputField?: (data: any) => Promise<any>;
   applyExtraVars?: () => Record<string, string>;
 };
 
@@ -477,8 +479,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
   const [followUpPromptsStatus, setFollowUpPromptsStatus] = createSignal<boolean>(false);
   const [followUpPrompts, setFollowUpPrompts] = createSignal<string[]>([]);
 
-  // Cache for choose_one_property answers within the current session
-  const [chooseOnePropertyCache, setChooseOnePropertyCache] = createSignal<Record<string, string>>({});
+  // Cache for choose_one_option answers within the current session
   const [chooseOneOptionCache, setChooseOneOptionCache] = createSignal<Record<string, string>>({});
 
   // drag & drop
@@ -861,6 +862,20 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     });
   };
 
+  const deepMergeInputs = (lastInputs: any | null | undefined, newInputs: any) => {
+    const result: any = lastInputs ? { ...lastInputs } : {};
+
+    for (const key in newInputs) {
+      if (newInputs[key] && typeof newInputs[key] === 'object' && !Array.isArray(newInputs[key])) {
+        result[key] = deepMergeInputs(result[key], newInputs[key]);
+      } else {
+        result[key] = newInputs[key];
+      }
+    }
+    
+    return result;
+  }
+
   const updateLastMessageAction = (action: IAction | string) => {
     const parsedAction: IAction = typeof action === 'string' ? JSON.parse(action as any) : action;
     if (parsedAction?.action === 'choose_one_option') {
@@ -982,7 +997,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       const data: any = parsedAction.data || {};
 
       // 속성 선택 캐쉬 초기화
-      setChooseOnePropertyCache({});
       setChooseOneOptionCache({});
 
       setLoading(true);
@@ -1041,6 +1055,63 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           const allMessages = [...cloneDeep(prevMessages)];
           if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {
             allMessages[allMessages.length - 1].search = data;
+            allMessages[allMessages.length - 1].action = null;
+            allMessages[allMessages.length - 1].pendingAction = null;
+          }
+          addChatMessage(allMessages);
+
+          return allMessages;
+        });
+
+        await handleSubmit('', parsedAction, { ok: success }, true);
+      })();
+      return;
+    }
+
+
+    if (parsedAction?.action === 'fill_input') {
+      const data: any = parsedAction.data || {};
+
+      // 속성 선택 캐쉬 초기화
+      setChooseOneOptionCache({});
+      setLoading(true);
+
+      setMessages((prev) => {
+        const all = [...cloneDeep(prev)];
+        if (all.length > 0) {
+          const lastIdx = all.length - 1;
+          if (all[lastIdx].type === 'apiMessage') {
+            (all[lastIdx] as any).action = { ...parsedAction } as IAction;
+          }
+        }
+        addChatMessage(all);
+        return all;
+      });
+
+      // applySearch 호출 후 결과 전송
+      (async () => {
+        let success = true;
+
+        try {
+          const applyInputFn = botProps.observersConfig?.applyInputField;
+          if (typeof applyInputFn === 'function') {
+            const res = await applyInputFn(data);
+
+            if (res && typeof res === 'object' && 'ok' in res) {
+              success = res.ok;
+            } else {
+              success = false;
+            }
+          }
+        } catch (e: any) {
+          data.error = { ok: false , message: e.message };
+          success = false;
+        }
+
+        setMessages((prevMessages) => {
+          const allMessages = [...cloneDeep(prevMessages)];
+          if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {
+            allMessages[allMessages.length - 1].inputs = deepMergeInputs(allMessages[allMessages.length - 1].inputs, data);
             allMessages[allMessages.length - 1].action = null;
             allMessages[allMessages.length - 1].pendingAction = null;
           }
@@ -1269,14 +1340,12 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
             });
             await logMessageCompletion('success', input);
             setLoading(false);
-            setCalledTools([]);
             closeResponse();
             break;
         }
       },
       async onclose() {
         setLoading(false);
-        setCalledTools([]);
         closeResponse();
       },
       onerror(err) {
@@ -1701,35 +1770,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       return;
     }
 
-    if (action && (action as any).action === 'choose_one_property') {
-      try {
-        const key = (action as any)?.data?.property_value ?? '';
-        if (key) {
-          const choice = elem?.prop_field ?? 'skip';
-          setChooseOnePropertyCache((prev) => ({ ...prev, [key]: choice }));
-        }
-      } catch (e) {
-        /* ignore */
-      }
-
-      setMessages((prev) => {
-        const all = [...cloneDeep(prev)];
-        if (all.length > 0) {
-          const lastIdx = all.length - 1;
-          if (all[lastIdx].type === 'apiMessage') {
-            const prefix = all[lastIdx].message && all[lastIdx].message.length > 0 ? '\n\n' : '';
-            all[lastIdx].message = `${all[lastIdx].message ?? ''}${prefix}${elem?.label ?? '건너뛰기'} ✔️\n\n`;
-          }
-        }
-        addChatMessage(all);
-        return all;
-      });
-
-      const humanInput = { ok: true, data: { choice: elem?.prop_field ?? null } };
-      await handleSubmit('', action, humanInput, true);
-      return;
-    }
-
     if (action && (action as any).action === 'choose_one_option') {
       if (action.cacheKey !== undefined && elem?.type !== undefined) {
         const key: string = action.cacheKey;
@@ -1764,7 +1804,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
   const clearChat = () => {
     try {
-      setChooseOnePropertyCache({});
       setChooseOneOptionCache({});
       setCalledTools([]);
       removeLocalStorageChatHistory(props.chatflowid);
@@ -2586,7 +2625,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                           isAppending={false}
                         />
                       )}
-                      {message.type === 'apiMessage' && loading() && index() === messages().length - 1 && showLoadingBubble() && (
+                      {message.type === 'apiMessage' && index() === messages().length - 1 && showLoadingBubble() && (
                         <LoadingBubble
                           calledTools={calledTools()}
                           showAvatar={props.botMessage?.showAvatar}

@@ -214,6 +214,17 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
         } else if (queries.size > 0) {
           parts.push(Array.from(queries).join(', ') + '에 대한 필터값 식별 중');
         }
+      } else if (name === 'fill_input') {
+        for (const item of items) {
+          if (item.args?.__names__) {
+            item.args?.__names__.forEach((name: string) => queries.add(`'${name}'`));
+          }
+        }
+        if (queries.size > 0) {
+          parts.push(Array.from(queries).join(', ') + '에 입력할 속성값 받아오는 중');
+        } else {
+          parts.push('입력할 속성값 받아오는 중');
+        }
       } else if (name === "search") {
         parts.push("검색 조건 받아오는 중");
       } else {

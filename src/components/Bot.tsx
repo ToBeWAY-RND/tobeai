@@ -165,7 +165,7 @@ export type observersConfigType = {
   fetchPropName?: (propId: string) => Promise<string> | string;
   fetchAreaTypeName?: (areaType: string) => Promise<string>;
   applySearch?: (data: any) => Promise<any>;
-  applyInputField?: (data: any) => Promise<any>;
+  applyInputField?: (data: any) => any;
   applyExtraVars?: () => Record<string, string>;
 };
 
@@ -1088,14 +1088,14 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         return all;
       });
 
-      // applySearch 호출 후 결과 전송
+      // applyInputField 호출 후 결과 전송
       (async () => {
         let success = true;
 
         try {
           const applyInputFn = botProps.observersConfig?.applyInputField;
           if (typeof applyInputFn === 'function') {
-            const res = await applyInputFn(data);
+            const res = applyInputFn(data);
 
             if (res && typeof res === 'object' && 'ok' in res) {
               success = res.ok;

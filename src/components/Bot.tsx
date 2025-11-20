@@ -1090,7 +1090,9 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
       // applyInputField 호출 후 결과 전송
       (async () => {
-        let success = true;
+        let result: any = {
+          ok: false, error: 'Unknown error'
+        }
 
         try {
           const applyInputFn = botProps.observersConfig?.applyInputField;
@@ -1098,14 +1100,15 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
             const res = applyInputFn(data);
 
             if (res && typeof res === 'object' && 'ok' in res) {
-              success = res.ok;
-            } else {
-              success = false;
+              result = res;
+
+              if (!res.ok) {
+                data.error = res;
+              }
             }
           }
         } catch (e: any) {
           data.error = { ok: false , message: e.message };
-          success = false;
         }
 
         setMessages((prevMessages) => {
@@ -1120,7 +1123,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           return allMessages;
         });
 
-        await handleSubmit('', parsedAction, { ok: success }, true);
+        await handleSubmit('', parsedAction, result, true);
       })();
       return;
     }
@@ -1804,6 +1807,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
   const clearChat = () => {
     try {
+      setShowLoadingBubble(false);
       setChooseOneOptionCache({});
       setCalledTools([]);
       removeLocalStorageChatHistory(props.chatflowid);

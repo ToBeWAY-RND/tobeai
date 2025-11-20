@@ -1,4 +1,4 @@
-import { createSignal, splitProps } from 'solid-js';
+import { createSignal, splitProps, createEffect, onMount } from 'solid-js';
 import { JSX } from 'solid-js/jsx-runtime';
 
 type ShortTextInputProps = {
@@ -15,22 +15,35 @@ const BUBBLE_DEFAULT_HEIGHT = 50;
 export const ShortTextInput = (props: ShortTextInputProps) => {
   const [local, others] = splitProps(props, ['ref', 'onInput']);
   const [height, setHeight] = createSignal(props.isFullPage ? FULL_DEFAULT_HEIGHT : BUBBLE_DEFAULT_HEIGHT);
+  let textareaRef: HTMLTextAreaElement | undefined;
 
-  let textareaEl: HTMLTextAreaElement | null = null;
+  const calculateHeight = (el: HTMLTextAreaElement) => {
+    if (el.value === '') {
+      // reset height when value is empty
+      setHeight(props.isFullPage ? FULL_DEFAULT_HEIGHT : BUBBLE_DEFAULT_HEIGHT);
+    } else {
+      const minHeight = props.isFullPage ? FULL_DEFAULT_HEIGHT : BUBBLE_DEFAULT_HEIGHT;
+      el.style.height = `${minHeight}px`;
+
+      const newHeight = Math.max(minHeight, el.scrollHeight);
+      setHeight(newHeight);
+    }
+  }
 
   // @ts-expect-error: unknown type
   const handleInput = (e) => {
     if (props.ref) {
-      if (e.currentTarget.value === '') {
-        // reset height when value is empty
-        setHeight(props.isFullPage ? FULL_DEFAULT_HEIGHT : BUBBLE_DEFAULT_HEIGHT);
-      } else {
-        setHeight(e.currentTarget.scrollHeight);
-      }
+      calculateHeight(e.currentTarget);
       e.currentTarget.scrollTo(0, e.currentTarget.scrollHeight);
       local.onInput(e.currentTarget.value);
     }
   };
+
+  onMount(() => {
+    if (textareaRef && props.value) {
+      calculateHeight(textareaRef);
+    }
+  })
 
   // @ts-expect-error: unknown type
   const handleKeyDown = (e) => {
@@ -57,13 +70,13 @@ export const ShortTextInput = (props: ShortTextInputProps) => {
   return (
     <textarea
       ref={(el) => {
+        textareaRef = el;
         // 사용자 ref 호환
         const assign = (node: HTMLTextAreaElement | null) => {
           if (typeof props.ref === 'function') props.ref(node as any);
           else if (props.ref) (props.ref as any) = node;
         };
         assign(el);
-        textareaEl = el;
 
         if (el) {
           // keydown 캡처 단계에서 Backspace 전파 차단

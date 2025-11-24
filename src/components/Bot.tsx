@@ -1321,12 +1321,14 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
             updateErrorMessage(payload.data);
             await logMessageCompletion('error', input);
             setCalledTools([]);
+			setShowLoadingBubble(false);
             break;
           case 'abort':
             abortMessage();
             await logMessageCompletion('abort', input);
             setCalledTools([]);
             closeResponse();
+			setShowLoadingBubble(false);
             break;
           case 'end':
             setLocalStorageChatflow(chatflowid, chatId);
@@ -1355,6 +1357,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         console.error('EventSource Error: ', err);
         logMessageCompletion('error', input).catch((e) => console.error('logMessageCompletion failed', e));
         setLoading(false);
+		setShowLoadingBubble(false);
         closeResponse();
         throw err;
       },

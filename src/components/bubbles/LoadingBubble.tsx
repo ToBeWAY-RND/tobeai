@@ -225,6 +225,17 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
         } else {
           parts.push('입력할 속성값 받아오는 중');
         }
+      } else if (name === 'get_value_pattern') {
+        for (const item of items) {
+          if (item.args?.property_name) {
+            queries.add(`'${item.args.property_name}'`);
+          }
+        }
+        if (queries.size > 0) {
+          parts.push(Array.from(queries).join(", ") + '의 값 패턴 분석 중');
+        } else {
+          parts.push("속성값 패턴 분석 중");
+        }
       } else if (name === "search") {
         parts.push("검색 조건 받아오는 중");
       } else {

@@ -167,6 +167,7 @@ export type observersConfigType = {
   applySearch?: (data: any) => Promise<any>;
   applyInputField?: (data: any) => any;
   applyExtraVars?: () => Record<string, string>;
+  getValuePatterns?: (data: any) => any;
 };
 
 export type BotProps = {
@@ -872,7 +873,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         result[key] = newInputs[key];
       }
     }
-    
+
     return result;
   }
 
@@ -1129,6 +1130,24 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       return;
     }
 
+    if (parsedAction?.action === 'get_value_pattern') {
+      const data: any = parsedAction.data || {};
+
+      setLoading(true);
+
+      let result: any = { ok: true, data: [] };
+
+      if (props.observersConfig?.getValuePatterns) {
+        result = props.observersConfig.getValuePatterns(data);
+      }
+
+      // getValuePatterns 호출 후 결과 전송
+      (async () => {
+        await handleSubmit('', parsedAction, result, true);
+      })();
+      return;
+    }
+
     setMessages((data) => {
       const updated = data.map((item, i) => {
         if (i === data.length - 1) {
@@ -1277,6 +1296,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                 return allMessages;
               });
               setCalledTools([]);
+              setLoading(true);
             }
             break;
           case 'token':
@@ -2330,7 +2350,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     const action = messagesArray[messagesArray.length - 1]?.action;
     const hasAction = !!(action && Object.keys(action).length > 0 && !action.allowInput);
 
-    return loading() || isRecording() || !props.chatflowid || (leadsConfig()?.status && !isLeadSaved()) || hasAction;
+    return loading() || isRecording() || !props.chatflowid || (leadsConfig()?.status && !isLeadSaved()) || hasAction || showLoadingBubble();
   };
 
   createEffect(

@@ -879,6 +879,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
   const updateLastMessageAction = (action: IAction | string) => {
     const parsedAction: IAction = typeof action === 'string' ? JSON.parse(action as any) : action;
     if (parsedAction?.action === 'choose_one_option') {
+		setShowLoadingBubble(false);
       const data: any = parsedAction.data || {};
 
       const sprintf = (s: string, ...args: string[]) => {
@@ -1777,6 +1778,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     }
 
     if (action && (action as any).action === 'choose_one_option') {
+		setShowLoadingBubble(true);
       if (action.cacheKey !== undefined && elem?.type !== undefined) {
         const key: string = action.cacheKey;
         const choice: string = elem?.type;

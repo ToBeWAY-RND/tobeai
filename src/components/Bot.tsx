@@ -181,6 +181,7 @@ export type BotProps = {
   mdmModules?: ComboBoxTheme;
   backgroundColor?: string;
   welcomeMessage?: string;
+  initialMessage?: string;
   errorMessage?: string;
   botMessage?: BotMessageTheme;
   userMessage?: UserMessageTheme;
@@ -2115,6 +2116,10 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       }
     } else {
       if (props.observersConfig?.enableButton) props.observersConfig.enableButton();
+    }
+
+    if (props.initialMessage && props.initialMessage.length > 0) {
+      await handleSubmit(props.initialMessage);
     }
 
     // eslint-disable-next-line solid/reactivity

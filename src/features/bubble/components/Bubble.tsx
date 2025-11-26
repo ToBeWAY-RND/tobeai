@@ -83,16 +83,16 @@ export const Bubble = (props: BubbleProps) => {
     const onOpen = () => openBot();
     const onClose = () => closeBot();
     const onToggle = () => toggleBot();
-	const onLoad = () => loadBot();
+	  const onLoad = () => loadBot();
     window.addEventListener('flowise:open', onOpen);
     window.addEventListener('flowise:close', onClose);
     window.addEventListener('flowise:toggle', onToggle);
-	window.addEventListener('flowise:load', onLoad);
+	  window.addEventListener('flowise:load', onLoad);
     return () => {
       window.removeEventListener('flowise:open', onOpen);
       window.removeEventListener('flowise:close', onClose);
       window.removeEventListener('flowise:toggle', onToggle);
-	  window.removeEventListener('flowise:load', onLoad);
+	    window.removeEventListener('flowise:load', onLoad);
     };
   });
 
@@ -217,6 +217,7 @@ export const Bubble = (props: BubbleProps) => {
               titleTextColor={bubbleProps.theme?.chatWindow?.titleTextColor}
               titleBackgroundColor={bubbleProps.theme?.chatWindow?.titleBackgroundColor}
               welcomeMessage={bubbleProps.theme?.chatWindow?.welcomeMessage}
+              initialMessage={bubbleProps.theme?.chatWindow?.initialMessage}
               errorMessage={bubbleProps.theme?.chatWindow?.errorMessage}
               poweredByTextColor={bubbleProps.theme?.chatWindow?.poweredByTextColor}
               textInput={bubbleProps.theme?.chatWindow?.textInput}

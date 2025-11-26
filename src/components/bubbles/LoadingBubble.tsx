@@ -236,7 +236,20 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
         } else {
           parts.push("속성값 패턴 분석 중");
         }
-      } else if (name === "search") {
+      } else if (name === 'clear_fields') {
+		  for (const item of items) {
+			  if (item.args?.__names__) {
+				  item.args?.__names__.forEach((name: string) => queries.add(`'${name}'`));
+			  }
+		  }
+		  if (queries.size > 0) {
+			  parts.push(Array.from(queries).join(', ') + ' 필드 초기화하는 중');
+		  } else {
+			  parts.push('필드 초기화하는 중');
+		  }
+	  } else if (name === 'clear_all_fields') {
+  		parts.push("전체 필드 초기화 하는 중");
+	  } else if (name === "search") {
         parts.push("검색 조건 받아오는 중");
       } else {
         parts.push(`'${name}' 호출 중`);

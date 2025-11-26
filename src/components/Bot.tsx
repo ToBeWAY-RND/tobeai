@@ -168,6 +168,8 @@ export type observersConfigType = {
   applyInputField?: (data: any) => any;
   applyExtraVars?: () => Record<string, string>;
   getValuePatterns?: (data: any) => any;
+  clearFields?: (data: any) => any;
+  clearAllFields?: () => any;
 };
 
 export type BotProps = {
@@ -1142,6 +1144,40 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       }
 
       // getValuePatterns 호출 후 결과 전송
+      (async () => {
+        await handleSubmit('', parsedAction, result, true);
+      })();
+      return;
+    }
+
+    if (parsedAction?.action === 'clear_fields') {
+      const data: any = parsedAction.data || {};
+
+      setLoading(true);
+
+      let result: any = { ok: true, data: [] };
+
+      if (props.observersConfig?.clearFields) {
+        result = props.observersConfig.clearFields(data);
+      }
+
+      // clearFields 호출 후 결과 전송
+      (async () => {
+        await handleSubmit('', parsedAction, result, true);
+      })();
+      return;
+    }
+
+    if (parsedAction?.action === 'clear_all_fields') {
+      setLoading(true);
+
+      let result: any = { ok: true, data: [] };
+
+      if (props.observersConfig?.clearAllFields) {
+        result = props.observersConfig.clearAllFields();
+      }
+
+      // clearAllFields 호출 후 결과 전송
       (async () => {
         await handleSubmit('', parsedAction, result, true);
       })();

@@ -169,7 +169,9 @@ export type observersConfigType = {
   applyExtraVars?: () => Record<string, string>;
   getValuePatterns?: (data: any) => any;
   clearFields?: (data: any) => any;
-  clearAllFields?: () => any;
+  clearAllFields?: (data: any) => any;
+  openSearchWindow?: (data: any) => any;
+  submitForm?: (data: any) => any;
 };
 
 export type BotProps = {
@@ -1133,57 +1135,36 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       return;
     }
 
-    if (parsedAction?.action === 'get_value_pattern') {
-      const data: any = parsedAction.data || {};
+	const simpleActions = {
+		get_value_pattern: props.observersConfig?.getValuePatterns,
+		clear_fields: props.observersConfig?.clearFields,
+		clear_all_fields: props.observersConfig?.clearAllFields,
+		open_search_window: props.observersConfig?.openSearchWindow,
+		submit: props.observersConfig?.submitForm
+	}
 
-      setLoading(true);
+	type SimpleAction = keyof typeof simpleActions;
+	const actionName = parsedAction?.action as SimpleAction;
 
-      let result: any = { ok: true, data: [] };
+	if (actionName) {
+		const data: any = parsedAction.data || {};
 
-      if (props.observersConfig?.getValuePatterns) {
-        result = props.observersConfig.getValuePatterns(data);
-      }
+		setLoading(true);
 
-      // getValuePatterns 호출 후 결과 전송
-      (async () => {
-        await handleSubmit('', parsedAction, result, true);
-      })();
-      return;
-    }
+		let result: any = { ok: true, data: {} };
 
-    if (parsedAction?.action === 'clear_fields') {
-      const data: any = parsedAction.data || {};
+		const actionFn = simpleActions[actionName];
 
-      setLoading(true);
+		if (actionFn) {
+			result = actionFn(data);
+		}
 
-      let result: any = { ok: true, data: [] };
-
-      if (props.observersConfig?.clearFields) {
-        result = props.observersConfig.clearFields(data);
-      }
-
-      // clearFields 호출 후 결과 전송
-      (async () => {
-        await handleSubmit('', parsedAction, result, true);
-      })();
-      return;
-    }
-
-    if (parsedAction?.action === 'clear_all_fields') {
-      setLoading(true);
-
-      let result: any = { ok: true, data: [] };
-
-      if (props.observersConfig?.clearAllFields) {
-        result = props.observersConfig.clearAllFields();
-      }
-
-      // clearAllFields 호출 후 결과 전송
-      (async () => {
-        await handleSubmit('', parsedAction, result, true);
-      })();
-      return;
-    }
+		// getValuePatterns 호출 후 결과 전송
+		(async () => {
+			await handleSubmit('', parsedAction, result, true);
+		})();
+		return;
+	}
 
     setMessages((data) => {
       const updated = data.map((item, i) => {

@@ -251,7 +251,11 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
   		parts.push("전체 필드 초기화 하는 중");
 	  } else if (name === "search") {
         parts.push("검색 조건 받아오는 중");
-      } else {
+      } else if (name === "open_search_window") {
+		  parts.push("검색 창 띄우는 중");
+	  } else if (name === "submit") {
+		  parts.push("제출 중");
+	  } else {
         parts.push(`'${name}' 호출 중`);
       }
     }

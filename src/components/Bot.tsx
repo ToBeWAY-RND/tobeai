@@ -36,7 +36,7 @@ import { CancelButton } from './buttons/CancelButton';
 import { cancelAudioRecording, startAudioRecording, stopAudioRecording } from '@/utils/audioRecording';
 import { LeadCaptureBubble } from '@/components/bubbles/LeadCaptureBubble';
 import { getCookie, getLocalStorageChatflow, removeLocalStorageChatHistory, setCookie, setLocalStorageChatflow } from '@/utils';
-import { cloneDeep, last} from 'lodash';
+import { cloneDeep, first, last} from 'lodash';
 import { FollowUpPromptBubble } from '@/components/bubbles/FollowUpPromptBubble';
 import { EventStreamContentType, fetchEventSource } from '@microsoft/fetch-event-source';
 
@@ -1882,6 +1882,10 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         window.removeEventListener('beforeunload', clearChat);
       };
     }
+	window.addEventListener('flowise:clear', clearChat);
+	return () => {
+		window.removeEventListener('flowise:clear', clearChat);
+	};
   });
 
   createEffect(() => {
@@ -2102,6 +2106,24 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     if (props.initialMessage && props.initialMessage.length > 0) {
       await handleSubmit(props.initialMessage);
     }
+
+	const firstMessage = messages()[0];
+	if (firstMessage && firstMessage.type === 'apiMessage') {
+		const welcomeMessage = props.welcomeMessage ?? defaultWelcomeMessage;
+		if (firstMessage.message !== welcomeMessage) {
+			setMessages((prevMessages) => {
+				const allMessages = [...cloneDeep(prevMessages)];
+				if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {
+					allMessages[allMessages.length - 1].message = `${allMessages[allMessages.length - 1].message}\n\n${welcomeMessage}`
+				} else {
+					allMessages.push({ message: welcomeMessage, type: 'apiMessage' });
+				}
+				addChatMessage(allMessages);
+
+				return allMessages;
+			});
+		}
+	}
 
     // eslint-disable-next-line solid/reactivity
     return () => {

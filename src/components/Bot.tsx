@@ -2535,7 +2535,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
               style={{
                 background: props.titleBackgroundColor || props.bubbleBackgroundColor || defaultTitleBackgroundColor,
                 color: props.titleTextColor || props.bubbleTextColor || defaultBackgroundColor,
-                'border-bottom': props.isFullPage ? '1px solid #CED4DA' : undefined,
+                'border-bottom': ((props.chatflowConfig as any)?.vars?.chatType === 'MANUAL') ? '1px solid #CED4DA' : undefined,
               }}
             >
               <Show when={props.titleAvatarSrc}>

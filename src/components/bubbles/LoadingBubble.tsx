@@ -11,6 +11,7 @@ type LoadingBubbleProps = {
   isAppending?: boolean;
   fetchPropName?:(propId: string) => Promise<string> | string;
   fetchAreaTypeName?: (areaType: string) => Promise<string>;
+  renderSummaryText?: (calledTools: any[]) => string[] | undefined;
 };
 
 const LoadingDots = () => {
@@ -61,6 +62,10 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
   });
 
   const summaryText = createMemo<string[]>(() => {
+    if (typeof props.renderSummaryText === 'function') {
+      const externalSummary = props.renderSummaryText(props.calledTools || []);
+      if (Array.isArray(externalSummary)) return externalSummary;
+    }
     const g = grouped();
     if (!g.size) return [];
     const parts: string[] = [];

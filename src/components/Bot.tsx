@@ -172,6 +172,7 @@ export type observersConfigType = {
   clearAllFields?: (data: any) => any;
   openSearchWindow?: (data: any) => any;
   submitForm?: (data: any) => any;
+  renderSummaryText?: (calledTools: any[]) => string[] | undefined;
 };
 
 export type BotProps = {
@@ -2696,6 +2697,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                           avatarLoadingSrc={props.botMessage?.avatarLoadingSrc}
                           avatarSrc={props.botMessage?.avatarSrc}
                           isAppending={false}
+                          renderSummaryText={props.observersConfig?.renderSummaryText}
                         />
                       )}
                       {message.type === 'apiMessage' && index() === messages().length - 1 && showLoadingBubble() && (
@@ -2707,6 +2709,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                           isAppending={message.message.trim() !== ''}
                           fetchPropName={props.observersConfig?.fetchPropName}
                           fetchAreaTypeName={props.observersConfig?.fetchAreaTypeName}
+                          renderSummaryText={props.observersConfig?.renderSummaryText}
                         />
                       )}
                     </>

@@ -905,6 +905,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         AREA: "'%s' 조직 영역에 들어갈 값을 선택해주세요",
         CLASS: "'%s'에 해당하는 분류를 선택해주세요",
         CATEGORY: "'%s'에 해당하는 카테고리를 선택해주세요.",
+        CORP: "데이터를 수집할 회사를 선택해주세요."
       };
       type PromptKey = keyof typeof prompts;
 
@@ -914,7 +915,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       if (promptType && promptArgs && promptArgs.length > 0) {
         prompt = sprintf(prompts[promptType], ...promptArgs);
       } else {
-        prompt = promptArgs.join(', ') + '에 대한 옵션을 선택해주세요';
+        prompt = '옵션을 선택해주세요';
       }
 
       let options: any[];

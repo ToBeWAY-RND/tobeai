@@ -221,8 +221,8 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
         }
       } else if (name === 'fill_input') {
         for (const item of items) {
-          if (item.args?.__names__) {
-            item.args?.__names__.forEach((name: string) => queries.add(`'${name}'`));
+          if (item.args?.property_names) {
+            item.args?.property_names.forEach((name: string) => queries.add(`'${name}'`));
           }
         }
         if (queries.size > 0) {
@@ -242,25 +242,49 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
           parts.push("속성값 패턴 분석 중");
         }
       } else if (name === 'clear_fields') {
-		  for (const item of items) {
-			  if (item.args?.__names__) {
-				  item.args?.__names__.forEach((name: string) => queries.add(`'${name}'`));
-			  }
-		  }
-		  if (queries.size > 0) {
-			  parts.push(Array.from(queries).join(', ') + ' 필드 초기화하는 중');
-		  } else {
-			  parts.push('필드 초기화하는 중');
-		  }
-	  } else if (name === 'clear_all_fields') {
-  		parts.push("전체 필드 초기화 하는 중");
-	  } else if (name === "search") {
+        for (const item of items) {
+          if (item.args?.property_names) {
+            item.args?.property_names.forEach((name: string) => queries.add(`'${name}'`));
+          }
+        }
+        if (queries.size > 0) {
+          parts.push(Array.from(queries).join(', ') + ' 필드 초기화하는 중');
+		    } else {
+			    parts.push('필드 초기화하는 중');
+        }
+      } else if (name === 'clear_all_fields') {
+        parts.push("전체 필드 초기화 하는 중");
+      } else if (name === "search") {
         parts.push("검색 조건 받아오는 중");
       } else if (name === "open_search_window") {
-		  parts.push("검색 창 띄우는 중");
-	  } else if (name === "submit") {
-		  parts.push("제출 중");
-	  } else {
+		    parts.push("검색 창 띄우는 중");
+	    } else if (name === "submit") {
+		    parts.push("제출 중");
+	    } else if (name.includes('get_corporation_info')) {
+        for (const item of items) {
+          if (item.args?.corp_name) {
+            queries.add(`'${item.args.corp_name}'`);
+          }
+        }
+        if (queries.size > 0) {
+          parts.push(Array.from(queries).join(', ') + '에 대한 사업자 정보 불러오는 중');
+        } else {
+          parts.push('사업자 정보 불러오는 중');
+        }
+      } else if (name === 'corporation_code_retriever') {
+        for (const item of items) {
+          if (item.args?.corp_name) {
+            queries.add(`'${item.args.corp_name}'`);
+          }
+        }
+        if (queries.size > 0) {
+          parts.push(Array.from(queries).join(', ') + '에 대한 사업자 코드 찾는 중');
+        } else {
+          parts.push('사업자 코드 찾는 중');
+        }
+      } else if (name === "choose_one_corporation_to_get_information") {
+        parts.push("사업자 정보 식별 중")
+      } else {
         parts.push(`'${name}' 호출 중`);
       }
     }

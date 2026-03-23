@@ -39,6 +39,7 @@ type Props = {
   observeSourceClick?: (sourceDocuments: any) => void;
   observeMenuClick?: (menu: any) => void;
   observeMastClick?: (mastid: any) => void;
+  observeMDTableClick?: (mdtableid: any) => void;
   langCode?: string;
   showUserAvartar?: boolean;
 };
@@ -286,6 +287,38 @@ export const BotBubble = (props: Props) => {
               orderedCurrentMastIds.push(matchedFromCurrent);
             }
           }
+        } else if (href.startsWith('mdtable:')) {
+          const mdTableId = href.substring('mdtable:'.length).trim();
+
+          link.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (!props.isLoading && props.observeMDTableClick) {
+              props.observeMDTableClick(mdTableId);
+            }
+          });
+
+          link.setAttribute('role', 'button');
+          link.style.cursor = props.isLoading ? 'not-allowed' : 'pointer';
+          link.style.color = props.textColor ?? defaultTextColor;
+          link.style.textDecoration = 'underline';
+          link.title = mdTableId;
+
+          const img = document.createElement('img');
+          img.dataset.menuIcon = '1';
+          img.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAD1SURBVHgBzZE/DgFREMZnZjdqN8AJHIEjcAMShQjFokAUCkRhUSCiwQlwA0fgBusGG4mCMOtteGLFnxUFXzPzZvL9Mm8G4NdCmTT0QZCRvbdNZjbK+fS62uz6iMgv62SRWcglV3auyqKFPEO8oyvKQoQ4IXVEjFzByIYIAQfgrGO8qGUWcKdSLhW1Y03vjRAxdtsjcKmLOSzS2McAaWaPJyyGNj4C1PV+W5rL6cR6j1t7eRXXAHGnpTTbz4qmmfvNbi7b6jt/KZuaOCZqDUMAhzFcruB6ic/0NcDxBcuiab3VN19bDo8BjGqU4OgFF1KATfgbnQDU3UrgFaO0lAAAAABJRU5ErkJggg==';
+          img.alt = '';
+          img.setAttribute('aria-hidden', 'true');
+
+          img.style.display = 'inline-block';
+          img.style.width = '1em';
+          img.style.height = '1em';
+          img.style.padding = '0';
+          img.style.margin = '0';
+          img.style.marginRight = '0.25em';
+          (img.style as any).verticalAlign = 'text-bottom';
+          img.style.lineHeight = '1';
+          link.insertBefore(img, link.firstChild);
+          invalid_link = false;
         }
 
         if (invalid_link && !href.startsWith('http://') && !href.startsWith("https://")) {

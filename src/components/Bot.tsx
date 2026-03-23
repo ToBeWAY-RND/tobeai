@@ -158,6 +158,7 @@ export type observersConfigType = {
   observeSourceClick?: observerConfigType;
   observeMenuClick?: observerConfigType;
   observeMastClick?: observerConfigType;
+  observeMDTableClick?: observerConfigType;
   observeCloseClick?: () => Promise<void>;
   disableButton?: () => void;
   enableButton?: () => void;
@@ -2671,6 +2672,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                           observeSourceClick={botProps.observersConfig?.observeSourceClick}
                           observeMenuClick={botProps.observersConfig?.observeMenuClick}
                           observeMastClick={botProps.observersConfig?.observeMastClick}
+                          observeMDTableClick={botProps.observersConfig?.observeMDTableClick}
                           langCode={(botProps.chatflowConfig?.vars as any).langCode}
                           showUserAvartar={props.userMessage?.showAvatar}
                         />

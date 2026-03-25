@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { font-family: sans-serif; font-size: 13px; margin: 8px; }
+  .summary { background: #f0f4ff; padding: 6px 10px; border-radius: 4px; margin-bottom: 8px; }
+  .summary b { color: #333; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; }
+  th { background: #f5f5f5; font-weight: 600; }
+  tr:hover { background: #eef; cursor: pointer; }
+  .footer { margin-top: 6px; color: #666; font-size: 12px; }
+  .loading { text-align: center; padding: 20px; color: #999; }
+</style>
+</head>
+<body>
+<div class="loading" id="loading">Loading...</div>
+<div id="content" style="display:none">
+  <div class="summary" id="summary"></div>
+  <table>
+    <thead><tr><th>#</th><th>ClassID</th><th>MastID</th><th>Name</th></tr></thead>
+    <tbody id="tbody"></tbody>
+  </table>
+  <div class="footer" id="footer"></div>
+</div>
+
+<script>
+  // Read search params from URL hash (passed by parent)
+  var raw = decodeURIComponent(location.hash.substring(1));
+  var params;
+  try { params = JSON.parse(raw); } catch(e) { params = {}; }
+
+  var isSemantic = params.type === 'semantic';
+  var properties = params.properties || {};
+  var propDefs   = params._propDefs || [];
+  var classes    = params._classes || {};
+
+  // Build summary
+  var parts = [];
+  if (isSemantic) {
+    parts.push('<b>Semantic Search:</b> ' + (params.query || ''));
+    parts.push('Matched ' + (params.mastids ? params.mastids.length : 0) + ' masters');
+  } else {
+    if (params.classid) parts.push('<b>Class:</b> ' + params.classid + ' (' + (classes[params.classid] || '') + ')');
+    for (var pid in properties) {
+      var p = propDefs.find(function(x) { return x.id === pid; });
+      parts.push('<b>' + (p ? p.name : pid) + ':</b> ' + JSON.stringify(properties[pid]));
+    }
+  }
+  document.getElementById('summary').innerHTML = parts.join(' &nbsp;|&nbsp; ') || 'Search';
+
+  // Build mock rows
+  var tbody = document.getElementById('tbody');
+  var rows;
+  if (isSemantic) {
+    rows = (params.mastids || []).map(function(m, i) {
+      return { n: i + 1, classid: m.classid, mastid: m.mastid, name: 'Sample data ' + (i + 1) };
+    });
+  } else {
+    rows = [];
+    for (var i = 0; i < 5; i++) {
+      rows.push({ n: i + 1, classid: 'CLASS' + i, mastid: 'MAST' + String(i).padStart(4, '0'), name: 'Mock result ' + (i + 1) });
+    }
+  }
+
+  rows.forEach(function(r) {
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td>' + r.n + '</td><td>' + r.classid + '</td><td>' + r.mastid + '</td><td>' + r.name + '</td>';
+    tr.addEventListener('dblclick', function() {
+      window.parent.postMessage({ type: 'mastClick', classid: r.classid, mastid: r.mastid }, '*');
+    });
+    tbody.appendChild(tr);
+  });
+
+  var totalCount = rows.length;
+  document.getElementById('footer').textContent = 'Total: ' + totalCount + ' results (mock)';
+
+  // Simulate loading delay, then show content and notify parent
+  setTimeout(function() {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+    window.parent.postMessage({ type: 'gridLoaded', totalCount: totalCount }, '*');
+  }, 800);
+</script>
+</body>
+</html>

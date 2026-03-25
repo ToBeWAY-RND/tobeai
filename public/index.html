@@ -53,8 +53,11 @@
   <span class="status" id="status-text"></span>
 </div>
 
-<div id="chatbot-container">
-  <flowise-fullchatbot></flowise-fullchatbot>
+<div style="display:flex; flex:1; overflow:hidden;">
+  <div id="chatbot-container" style="flex:1; overflow:hidden;">
+    <flowise-fullchatbot></flowise-fullchatbot>
+  </div>
+  <div id="grid-panel" style="display:none; width:50%; border-left:1px solid #ccc; overflow:auto;"></div>
 </div>
 
 <script type="module">
@@ -193,6 +196,7 @@
             fetch_valuelist:    'Fetching value list for %s',
             get_master_info:    'Loading detail for %s',
             choose_one_property:'Identifying property for %s',
+            show_semantic_results: 'Showing semantic results for %s',
             _unknown:           "Calling '%s'",
           }
         }
@@ -279,41 +283,52 @@
 
           if (action === 'search') {
             console.log('[callJS] search', params);
-            const classes = conf.chatflowConfig.vars.classesJson || {};
-            const props = conf.chatflowConfig.vars.propertiesJson || [];
 
-            // Build readable summary
-            const lines = ['=== Search Query ==='];
-            if (params.classid) {
-              lines.push('Class: ' + params.classid + ' (' + (classes[params.classid] || '?') + ')');
-            }
-            if (params.properties) {
-              for (const [pid, val] of Object.entries(params.properties)) {
-                const p = props.find(p => p.id === pid);
-                const name = p ? p.name : pid;
-                lines.push('Property [' + name + ']: ' + JSON.stringify(val));
-              }
-            }
-            if (params.areas) {
-              for (const [aid, val] of Object.entries(params.areas)) {
-                lines.push('Area [' + aid + ']: ' + JSON.stringify(val));
-              }
-            }
-
-            // Check if classid changed → navigate to new classid (reloads page)
-            if (params.classid && params.classid !== getParam('classid', 'CUSTOMER')) {
-              console.log('[callJS] search: class move to', params.classid);
+            // For AGENTSEARCH: check classid move
+            if (chatType !== 'SEARCH' && params.classid && params.classid !== getParam('classid', 'CUSTOMER')) {
               const url = new URL(location.href);
               url.searchParams.set('classid', params.classid);
-              // In real MDM this navigates the search page; here we reload with new classid
-              if (confirm(lines.join('\n') + '\n\n→ Class move! Reload with classid=' + params.classid + '?')) {
+              if (confirm('Class move to ' + params.classid + '! Reload?')) {
                 window.location.href = url.toString();
               }
               return { hold: true };
             }
 
-            alert(lines.join('\n'));
-            return { ok: true };
+            // ── Show search results in mock grid iframe ──
+            return new Promise((resolve) => {
+              // Remove any previous mock grid
+              const prev = document.getElementById('mock-grid-frame');
+              if (prev) prev.remove();
+
+              // Pass search params + display metadata via URL hash
+              const gridParams = {
+                ...params,
+                _propDefs: conf.chatflowConfig.vars.propertiesJson || [],
+                _classes: conf.chatflowConfig.vars.classesJson || {},
+              };
+              const hash = encodeURIComponent(JSON.stringify(gridParams));
+
+              // Create iframe (hidden until grid reports loaded)
+              const iframe = document.createElement('iframe');
+              iframe.id = 'mock-grid-frame';
+              iframe.style.cssText = 'width:100%;height:100%;border:none;display:none;';
+              iframe.src = './mock-grid.html#' + hash;
+
+              const onMessage = (e) => {
+                if (e.source !== iframe.contentWindow) return;
+                if (e.data?.type === 'gridLoaded') {
+                  window.removeEventListener('message', onMessage);
+                  iframe.style.display = 'block';
+                  gridPanel.style.display = 'block';
+                  resolve({ ok: true, totalCount: e.data.totalCount });
+                }
+              };
+              window.addEventListener('message', onMessage);
+
+              const gridPanel = $('grid-panel');
+              gridPanel.innerHTML = '';
+              gridPanel.appendChild(iframe);
+            });
           }
 
           if (action === 'fill_input') {

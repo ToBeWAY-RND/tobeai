@@ -19,7 +19,8 @@
     #toolbar button:hover { background: #3560d4; }
     #toolbar .status { margin-left: auto; color: #666; }
     #toolbar { position: relative; z-index: 99999; }
-    #chatbot-container { }
+    #chatbot-container { flex: 1; overflow: hidden; }
+    body { display: flex; flex-direction: column; }
   </style>
 </head>
 <body>
@@ -48,6 +49,7 @@
   <button id="btn-fetch-token" title="Fetch from MDM (must be logged in)">Fetch</button>
   <div class="sep"></div>
   <button id="btn-launch">Launch</button>
+  <button id="btn-agent" style="display:none; background:#CBAC3A;" title="Search with AI">&#x1FA94; Agent</button>
   <span class="status" id="status-text"></span>
 </div>
 
@@ -99,8 +101,8 @@
     history.replaceState(null, '', u);
 
     // Calculate available height below toolbar
-    const toolbarH = $('toolbar').offsetHeight;
-    const chatHeight = window.innerHeight - toolbarH;
+    const container = $('chatbot-container');
+    const chatHeight = container.clientHeight;
 
     const conf = {
       chatflowid: chatType + '_' + domainId,
@@ -119,6 +121,7 @@
           mdmUrl,
           aimlUrl,
           gptModel: 'gemini::low:gemini-3.1-flash-lite-preview',
+          isFastMode: 'N',
           speechToTextModel: 'openai:whisper-1',
           embeddingModelId: 'VCA1',
           embeddingModelName: 'openai:text-embedding-3-small',
@@ -136,8 +139,20 @@
               ]
             },
             {
-              id: 'REP', name: '대표명', short_name: 'Representative', type: 'string',
-              description: '대표자 이름',
+              id: 'REP', name: '대표자명', short_name: 'Representative Name', type: 'string',
+              description: '대표자 이름. 예) 홍길동',
+            },
+            {
+              id: 'NAME', name: '고객명', short_name: 'Customer', type: 'string',
+              description: '고객 이름 예) 홍길동, 또는 (주)투비웨이',
+            },
+            {
+              id: 'LAND', name: '국가', short_name: 'Country', type: 'enum',
+              description: '국가 코드',
+              enum_options: [
+                { id: 'KR', name: '한국' }, { id: 'US', name: '미국' }, { id: 'JP', name: '일본' },
+                { id: 'CN', name: '중국' }, { id: 'DE', name: '독일' }, { id: 'VN', name: '베트남' },
+              ]
             },
             {
               id: 'ANRED', name: '고객유형', short_name: 'Title', type: 'enum',
@@ -384,12 +399,39 @@
 
     // Destroy previous instance, then ensure element exists
     Chatbot.destroy();
-    const container = $('chatbot-container');
     container.innerHTML = '';
-    container.appendChild(document.createElement('flowise-fullchatbot'));
+
+    const isAgent = chatType.startsWith('AGENT');
+    $('btn-agent').style.display = isAgent ? '' : 'none';
 
     setStatus('Launching...');
-    Chatbot.initFull(conf);
+    if (isAgent) {
+      conf.theme.border = '1px solid #C2C2C2';
+      conf.theme.borderRadius = 8;
+      conf.theme.button = {
+        backgroundColor: '#FFFFFF',
+        right: 20,
+        bottom: 20,
+        size: 48,
+        dragAndDrop: false,
+        iconColor: '#FFFFFF',
+        hideButton: true,
+        externalTriggerElementId: 'btn-agent',
+        autoWindowOpen: { autoOpen: false, openDelay: 0, autoOpenOnMobile: false },
+      };
+      conf.theme.chatWindow.width = 400;
+      conf.theme.chatWindow.antiHeight = 40;
+      conf.theme.chatWindow.showCloseButton = true;
+      conf.theme.chatWindow.closeButtonColor = '#FFFFFF';
+      conf.theme.chatWindow.titleBackgroundColor = '#CBAC3A';
+      conf.theme.chatWindow.userMessage = { backgroundColor: '#FAF0D1', textColor: '#474747' };
+      conf.theme.chatWindow.textInput.sendButtonColor = '#CBAC3A';
+      conf.theme.chatWindow.fastMode = { label: 'Fast', defaultValue: false, labelInButton: false };
+      Chatbot.init(conf);
+    } else {
+      container.appendChild(document.createElement('flowise-fullchatbot'));
+      Chatbot.initFull(conf);
+    }
     setStatus(chatType + ' ready');
   }
 

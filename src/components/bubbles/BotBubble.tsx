@@ -666,7 +666,7 @@ export const BotBubble = (props: Props) => {
                       ) : (
                         <button
                           type="button"
-                          class="px-4 py-2 font-medium text-gray-700 border border-gray-300 rounded-full hover:bg-gray-100 transition-colors duration-300"
+                          class="px-4 py-2 font-medium text-gray-700 border border-gray-300 rounded-full hover:bg-gray-100 transition-colors duration-300 text-left"
                           onClick={() => props.handleActionClick(action, props.message.action)}
                         >
                           {action.label}
@@ -720,7 +720,7 @@ export const BotBubble = (props: Props) => {
               <CopyToClipboardButton feedbackColor={props.feedbackColor} onClick={() => copyMessageToClipboard()} />
               <Show when={copiedMessage()}>
                 <div class="copied-message" style={{ 'margin-right': '6px', 'font-size': '12px', 'color': props.feedbackColor ?? defaultFeedbackColor }}>
-                  복사완료!
+                  Copied!
                 </div>
               </Show>
               {rating() === '' || rating() === 'THUMBS_UP' ? (

@@ -13,7 +13,7 @@ const defaultIconColor = 'white';
 export type BubbleProps = BotProps & BubbleParams;
 
 export const Bubble = (props: BubbleProps) => {
-  const [bubbleProps] = splitProps(props, ['theme', 'resources']);
+  const [bubbleProps] = splitProps(props, ['theme', 'resources'] as const);
 
   const [isBotOpened, setIsBotOpened] = createSignal(false);
   const [isBotStarted, setIsBotStarted] = createSignal(false);

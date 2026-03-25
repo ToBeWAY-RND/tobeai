@@ -73,7 +73,7 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
 
     const pendingChooseJobs: Array<Promise<void>> = [];
 
-    // i18n helper: use loadingLabels[key] with %s substitution, fallback to Korean default
+    // i18n helper: use loadingLabels[key] with %s substitution, fallback to English default
     const L = (key: string, fallback: string, queryText?: string): string => {
       const template = props.loadingLabels?.[key] ?? fallback;
       return queryText !== undefined ? template.replace(/%s/g, queryText) : template;
@@ -82,7 +82,7 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
     for (const [name, items] of g) {
       const queries = new Set<string>();
       if (name === 'get_property_list') {
-        parts.push(L('get_property_list', "속성 리스트 불러오는 중"));
+        parts.push(L('get_property_list', 'Loading property list'));
       } else if (name === 'mdm_application_guide_retriever') {
         for (const item of items) {
           if (item.args?.query) {
@@ -90,7 +90,7 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
           }
         }
         if (queries.size > 0) {
-          parts.push(L('mdm_application_guide_retriever', '%s에 대한 메뉴얼 검색 중', Array.from(queries).join(', ')));
+          parts.push(L('mdm_application_guide_retriever', 'Searching manual for %s', Array.from(queries).join(', ')));
         }
       } else if (name === "mdm_menu_retriever") {
         for (const item of items) {
@@ -99,7 +99,7 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
           }
         }
         if (queries.size > 0) {
-          parts.push(L('mdm_menu_retriever', '%s에 대한 메뉴 검색 중', Array.from(queries).join(', ')));
+          parts.push(L('mdm_menu_retriever', 'Searching menu for %s', Array.from(queries).join(', ')));
         }
       } else if (name === "class_retriever") {
         for (const item of items) {
@@ -108,7 +108,7 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
           }
         }
         if (queries.size > 0) {
-          parts.push(L('class_retriever', '%s에 대한 분류 검색 중', Array.from(queries).join(', ')));
+          parts.push(L('class_retriever', 'Searching class for %s', Array.from(queries).join(', ')));
         }
       } else if (name === "search_table") {
         for (const item of items) {
@@ -117,7 +117,7 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
           }
         }
         if (queries.size > 0) {
-          parts.push(L('search_table', '%s에 대한 테이블 정보 검색 중', Array.from(queries).join(', ')));
+          parts.push(L('search_table', 'Searching table info for %s', Array.from(queries).join(', ')));
         }
       } else if (name === "get_table_info") {
         for (const item of items) {
@@ -126,7 +126,7 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
           }
         }
         if (queries.size > 0) {
-          parts.push(L('get_table_info', '%s 테이블의 정보 불러오는 중', Array.from(queries).join(', ')));
+          parts.push(L('get_table_info', 'Loading table info for %s', Array.from(queries).join(', ')));
         }
       } else if (name === "get_master_info") {
         for (const item of items) {
@@ -135,7 +135,7 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
           }
         }
         if (queries.size > 0) {
-          parts.push(L('get_master_info', '기준정보 %s의 상세정보 불러오는 중', Array.from(queries).join(', ')));
+          parts.push(L('get_master_info', 'Loading detail for master %s', Array.from(queries).join(', ')));
         }
       } else if (name === "search_master_by_property") {
         for (const item of items) {
@@ -144,12 +144,12 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
               let propId = query.property_id;
               if (!propId || !query.query) continue;
               if (query.col_property_id) propId = propId + "." + query.col_property_id;
-              queries.add(`'${propId}'에 '${query.query}'`);
+              queries.add(`${propId}='${query.query}'`);
             }
           }
         }
         if (queries.size > 0) {
-          parts.push(L('search_master_by_property', '%s을(를) 대입한 속성 검색 중', Array.from(queries).join(', ')));
+          parts.push(L('search_master_by_property', 'Searching by property %s', Array.from(queries).join(', ')));
         }
       } else if (name === "master_retriever") {
         for (const item of items) {
@@ -158,7 +158,7 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
           }
         }
         if (queries.size > 0) {
-          parts.push(L('master_retriever', '%s에 대한 유사도 검색 중', Array.from(queries).join(', ')));
+          parts.push(L('master_retriever', 'Similarity search for %s', Array.from(queries).join(', ')));
         }
       } else if (name === "choose_one_property") {
         for (const item of items) {
@@ -167,7 +167,7 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
           }
         }
         if (queries.size > 0) {
-          parts.push(L('choose_one_property', '%s에 대한 속성 식별 중', Array.from(queries).join(', ')));
+          parts.push(L('choose_one_property', 'Identifying property for %s', Array.from(queries).join(', ')));
         }
       } else if (name === "choose_one_classid") {
         for (const item of items) {
@@ -176,7 +176,7 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
           }
         }
         if (queries.size > 0) {
-          parts.push(L('choose_one_classid', '%s에 대한 분류 식별 중', Array.from(queries).join(', ')));
+          parts.push(L('choose_one_classid', 'Identifying class for %s', Array.from(queries).join(', ')));
         }
       } else if (name === "choose_one_category") {
         for (const item of items) {
@@ -185,27 +185,27 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
           }
         }
         if (queries.size > 0) {
-          parts.push(L('choose_one_category', '%s에 대한 카테고리 식별 중', Array.from(queries).join(', ')));
+          parts.push(L('choose_one_category', 'Identifying category for %s', Array.from(queries).join(', ')));
         }
       } else if (name === "choose_one_enum_for_property") {
         if (typeof props.fetchPropName === 'function') {
           pendingChooseJobs.push(addChooseQueries(items, queries, props.fetchPropName).then(() => {
             if (queries.size > 0) {
-              parts.push(L('choose_one_enum_for_property', '%s에 대한 속성값 식별 중', Array.from(queries).join(', ')));
+              parts.push(L('choose_one_enum_for_property', 'Identifying value for %s', Array.from(queries).join(', ')));
             }
           }));
         } else if (queries.size > 0) {
-          parts.push(L('choose_one_enum_for_property', '%s에 대한 속성값 식별 중', Array.from(queries).join(', ')));
+          parts.push(L('choose_one_enum_for_property', 'Identifying value for %s', Array.from(queries).join(', ')));
         }
       } else if (name === "choose_one_unit_for_property") {
         if (typeof props.fetchPropName === 'function') {
           pendingChooseJobs.push(addChooseQueries(items, queries, props.fetchPropName).then(() => {
             if (queries.size > 0) {
-              parts.push(L('choose_one_unit_for_property', '%s에 대한 단위 식별 중', Array.from(queries).join(', ')));
+              parts.push(L('choose_one_unit_for_property', 'Identifying unit for %s', Array.from(queries).join(', ')));
             }
           }));
         } else if (queries.size > 0) {
-          parts.push(L('choose_one_unit_for_property', '%s에 대한 단위 식별 중', Array.from(queries).join(', ')));
+          parts.push(L('choose_one_unit_for_property', 'Identifying unit for %s', Array.from(queries).join(', ')));
         }
       } else if (name === "choose_one_areatype") {
         for (const item of items) {
@@ -214,17 +214,17 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
           }
         }
         if (queries.size > 0) {
-          parts.push(L('choose_one_areatype', '%s에 대한 조직 영역 식별 중', Array.from(queries).join(', ')));
+          parts.push(L('choose_one_areatype', 'Identifying area type for %s', Array.from(queries).join(', ')));
         }
       } else if (name === "choose_one_areaid_or_filter") {
         if (typeof props.fetchAreaTypeName === 'function') {
           pendingChooseJobs.push(addChooseAreaQueries(items, queries, props.fetchAreaTypeName).then(() => {
             if (queries.size > 0) {
-              parts.push(L('choose_one_areaid_or_filter', '%s에 대한 필터값 식별 중', Array.from(queries).join(', ')));
+              parts.push(L('choose_one_areaid_or_filter', 'Identifying filter for %s', Array.from(queries).join(', ')));
             }
           }));
         } else if (queries.size > 0) {
-          parts.push(L('choose_one_areaid_or_filter', '%s에 대한 필터값 식별 중', Array.from(queries).join(', ')));
+          parts.push(L('choose_one_areaid_or_filter', 'Identifying filter for %s', Array.from(queries).join(', ')));
         }
       } else if (name === 'fill_input') {
         for (const item of items) {
@@ -233,9 +233,9 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
           }
         }
         if (queries.size > 0) {
-          parts.push(L('fill_input', '%s에 입력할 속성값 받아오는 중', Array.from(queries).join(', ')));
+          parts.push(L('fill_input', 'Filling values for %s', Array.from(queries).join(', ')));
         } else {
-          parts.push(L('fill_input_empty', '입력할 속성값 받아오는 중'));
+          parts.push(L('fill_input_empty', 'Filling property values'));
         }
       } else if (name === 'get_value_pattern') {
         for (const item of items) {
@@ -244,9 +244,9 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
           }
         }
         if (queries.size > 0) {
-          parts.push(L('get_value_pattern', '%s의 값 패턴 분석 중', Array.from(queries).join(", ")));
+          parts.push(L('get_value_pattern', 'Analyzing value pattern for %s', Array.from(queries).join(", ")));
         } else {
-          parts.push(L('get_value_pattern_empty', "속성값 패턴 분석 중"));
+          parts.push(L('get_value_pattern_empty', 'Analyzing value pattern'));
         }
       } else if (name === 'clear_fields') {
         for (const item of items) {
@@ -255,18 +255,18 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
           }
         }
         if (queries.size > 0) {
-          parts.push(L('clear_fields', '%s 필드 초기화하는 중', Array.from(queries).join(', ')));
+          parts.push(L('clear_fields', 'Clearing fields %s', Array.from(queries).join(', ')));
         } else {
-          parts.push(L('clear_fields_empty', '필드 초기화하는 중'));
+          parts.push(L('clear_fields_empty', 'Clearing fields'));
         }
       } else if (name === 'clear_all_fields') {
-        parts.push(L('clear_all_fields', "전체 필드 초기화 하는 중"));
+        parts.push(L('clear_all_fields', 'Clearing all fields'));
       } else if (name === "search") {
-        parts.push(L('search', "검색 조건 받아오는 중"));
+        parts.push(L('search', 'Building search conditions'));
       } else if (name === "open_search_window") {
-        parts.push(L('open_search_window', "검색 창 띄우는 중"));
+        parts.push(L('open_search_window', 'Opening search window'));
       } else if (name === "submit") {
-        parts.push(L('submit', "제출 중"));
+        parts.push(L('submit', 'Submitting'));
       } else if (name.includes('get_corporation_info')) {
         for (const item of items) {
           if (item.args?.corp_name) {
@@ -274,9 +274,9 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
           }
         }
         if (queries.size > 0) {
-          parts.push(L('get_corporation_info', '%s에 대한 사업자 정보 불러오는 중', Array.from(queries).join(', ')));
+          parts.push(L('get_corporation_info', 'Loading corporation info for %s', Array.from(queries).join(', ')));
         } else {
-          parts.push(L('get_corporation_info_empty', '사업자 정보 불러오는 중'));
+          parts.push(L('get_corporation_info_empty', 'Loading corporation info'));
         }
       } else if (name === 'corporation_code_retriever') {
         for (const item of items) {
@@ -285,14 +285,14 @@ export const LoadingBubble = (props: LoadingBubbleProps) => {
           }
         }
         if (queries.size > 0) {
-          parts.push(L('corporation_code_retriever', '%s에 대한 사업자 코드 찾는 중', Array.from(queries).join(', ')));
+          parts.push(L('corporation_code_retriever', 'Finding corporation code for %s', Array.from(queries).join(', ')));
         } else {
-          parts.push(L('corporation_code_retriever_empty', '사업자 코드 찾는 중'));
+          parts.push(L('corporation_code_retriever_empty', 'Finding corporation code'));
         }
       } else if (name === "choose_one_corporation_to_get_information") {
-        parts.push(L('choose_one_corporation_to_get_information', "사업자 정보 식별 중"));
+        parts.push(L('choose_one_corporation_to_get_information', 'Identifying corporation'));
       } else {
-        parts.push(L('_unknown', "'%s' 호출 중", name));
+        parts.push(L('_unknown', "Calling '%s'", name));
       }
     }
 

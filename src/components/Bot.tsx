@@ -848,14 +848,14 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       let prompt: string;
 
       const defaultPrompts: Record<string, string> = {
-        PROP: "'%s'에 해당하는 속성을 선택해주세요",
-        VALUE: "'%s' 속성에 들어갈 값을 선택해주세요",
-        UNIT: "'%s' 속성에 사용할 단위를 선택해주세요",
-        AREATYPE: "'%s'에 해당하는 조직 영역을 선택해주세요",
-        AREA: "'%s' 조직 영역에 들어갈 값을 선택해주세요",
-        CLASS: "'%s'에 해당하는 분류를 선택해주세요",
-        CATEGORY: "'%s'에 해당하는 카테고리를 선택해주세요.",
-        CORP: "사업자 정보를 수집할 회사를 선택해주세요."
+        PROP: "Select the property for '%s'",
+        VALUE: "Select the value for '%s'",
+        UNIT: "Select the unit for '%s'",
+        AREATYPE: "Select the area type for '%s'",
+        AREA: "Select the area for '%s'",
+        CLASS: "Select the class for '%s'",
+        CATEGORY: "Select the category for '%s'",
+        CORP: "Select the company",
       };
       const chooseOneLabels = props.resources?.labels?.chooseOne;
       const prompts: Record<string, string> = chooseOneLabels
@@ -871,13 +871,13 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       } else if (promptType) {
         prompt = prompts[promptType];
       } else {
-        prompt = props.resources?.labels?.chooseDefault || '옵션을 선택해주세요';
+        prompt = props.resources?.labels?.chooseDefault || 'Please select an option';
       }
 
       let options: any[];
 
       if (promptType === 'CATEGORY') {
-        const defaultCategoryLabels: Record<string, string> = { CLASS: '분류', PROPERTY: '속성', AREA: '조직 영역' };
+        const defaultCategoryLabels: Record<string, string> = { CLASS: 'Class', PROPERTY: 'Property', AREA: 'Area' };
         const categoryLabels = props.resources?.labels?.categoryLabels
           ? { ...defaultCategoryLabels, ...props.resources.labels.categoryLabels }
           : defaultCategoryLabels;
@@ -897,7 +897,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
       if (addNull) {
         // Null 버튼 추가
-        options.push({ type: '__NULL__', label: props.resources?.labels?.nullValue || '값 없음' });
+        options.push({ type: '__NULL__', label: props.resources?.labels?.nullValue || 'No value' });
       }
 
       const concat_options = options
@@ -932,8 +932,8 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           return all;
         });
 
-        // 건너뛰기 버튼 추가
-        options.push({ type: 'skip', label: props.resources?.labels?.skip || '건너뛰기' });
+        // Add skip button
+        options.push({ type: 'skip', label: props.resources?.labels?.skip || 'Skip' });
 
         setMessages((prev) => {
           const all = [...cloneDeep(prev)];
@@ -1665,7 +1665,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           const lastIdx = all.length - 1;
           if (all[lastIdx].type === 'apiMessage') {
             const prefix = all[lastIdx].message && all[lastIdx].message.length > 0 ? '\n\n' : '';
-            all[lastIdx].message = `${all[lastIdx].message ?? ''}${prefix}${elem?.label ?? (props.resources?.labels?.skip || '건너뛰기')} ✔️\n\n`;
+            all[lastIdx].message = `${all[lastIdx].message ?? ''}${prefix}${elem?.label ?? (props.resources?.labels?.skip || 'Skip')} ✔️\n\n`;
           }
         }
         addChatMessage(all);
@@ -2389,7 +2389,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                     options={props.mdmModules?.values || []}
                     label={props.mdmModules?.label}
                     defaultValue={props.mdmModules?.defaultValue}
-                    placeholder="모듈을 선택하세요"
+                    placeholder="Module"
                     onChange={(value: string) => {
                       // 선택된 MDM 모듈 값을 chatflowConfig에 저장
                       if (botProps.chatflowConfig?.vars) {

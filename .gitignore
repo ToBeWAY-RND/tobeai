@@ -2,3 +2,7 @@ node_modules
 dist
 .idea
 .env
+.yarn/**
+.yarnrc.yml
+
+public/index.html

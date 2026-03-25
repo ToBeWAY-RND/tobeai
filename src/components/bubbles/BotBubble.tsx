@@ -2,7 +2,7 @@ import { createEffect, Show, createSignal, onMount, For } from 'solid-js';
 import { Avatar } from '../avatars/Avatar';
 import { Marked } from '@ts-stack/markdown';
 import { FeedbackRatingType, sendFeedbackQuery, sendFileDownloadQuery, updateFeedbackQuery } from '@/queries/sendMessageQuery';
-import { FileUpload, IAction, MessageType } from '../Bot';
+import { FileUpload, IAction, MessageType, LinkResolveResult } from '../Bot';
 import { CopyToClipboardButton, ThumbsDownButton, ThumbsUpButton } from '../buttons/FeedbackButtons';
 import FeedbackContentDialog from '../FeedbackContentDialog';
 import { AgentReasoningBubble } from './AgentReasoningBubble';
@@ -36,9 +36,12 @@ type Props = {
   renderHTML?: boolean;
   handleActionClick: (elem: any, action: IAction | undefined | null) => void;
   handleSourceDocumentsClick: (src: any) => void;
+  // 제네릭 JS 액션 디스패처
+  callJS?: (action: string, params: any) => Promise<any>;
+  // 링크 해석 콜백 — 제공 시 하드코딩된 액션 매칭을 대체
+  resolveLink?: (action: string, key: string, message: any) => LinkResolveResult | null;
+  // @deprecated — callJS + resolveLink로 마이그레이션 예정. 하위 호환성을 위해 유지
   observeSourceClick?: (sourceDocuments: any) => void;
-  observeMenuClick?: (menu: any) => void;
-  observeMastClick?: (mastid: any) => void;
   observeMDTableClick?: (mdtableid: any) => void;
   langCode?: string;
   showUserAvartar?: boolean;
@@ -51,8 +54,6 @@ const defaultFeedbackColor = '#3B81F6';
 
 export const BotBubble = (props: Props) => {
   const [orderedSources, setOrderedSources] = createSignal<any[]>([]);
-  const [orderedMenus, setOrderedMenus] = createSignal<any[]>([]);
-  const [orderedMastIds, setOrderedMastIds] = createSignal<string[]>([]);
   let botDetailsEl: HTMLDetailsElement | undefined;
 
   Marked.setOptions({ isNoP: true, sanitize: props.renderHTML !== undefined ? !props.renderHTML : true });
@@ -91,248 +92,160 @@ export const BotBubble = (props: Props) => {
         (element as HTMLElement).style.color = '#4CAF50'; // Green color
       });
 
-      let prevMenus: any[] = [];
-      let prevDocs: any[] = [];
-      let prevMastSearches: any[] = [];
-      try {
-        const chatDetails = localStorage.getItem(`${props.chatflowid}_EXTERNAL`);
-        if (chatDetails) {
-          const parsedDetails = JSON.parse(chatDetails);
-          const history: MessageType[] = parsedDetails.chatHistory || [];
-          const currentIdx = history.findIndex((m: MessageType) => m.messageId === props.message.messageId);
-          const prev = currentIdx >= 0 ? history.slice(0, currentIdx) : history;
-          for (const msg of prev) {
-            if (Array.isArray(msg.menus)) prevMenus = prevMenus.concat(msg.menus);
-            if (Array.isArray(msg.sourceDocuments)) prevDocs = prevDocs.concat(msg.sourceDocuments);
-            if (Array.isArray(msg.mastSearches)) prevMastSearches = prevMastSearches.concat(msg.mastSearches);
-          }
-        }
-      } catch (e) {
-        // ignore parsing errors
-      }
-
-      const currentDocs = Array.isArray(props.message.sourceDocuments) ? props.message.sourceDocuments : [];
-
       const orderedCurrentSources: any[] = [];
-      const orderedCurrentMenus: any[] = [];
-      const orderedCurrentMastIds: string[] = [];
-      let currentDocCounter = 0;
-      const docNumberMap = new Map<string, number>();
+
+      // 링크 아이콘 스타일 적용 헬퍼
+      const applyIconLink = (link: HTMLAnchorElement, title?: string) => {
+        link.setAttribute('role', 'button');
+        link.style.cursor = props.isLoading ? 'not-allowed' : 'pointer';
+        link.style.color = props.textColor ?? defaultTextColor;
+        link.style.textDecoration = 'underline';
+        if (title) link.title = title;
+
+        const img = document.createElement('img');
+        img.dataset.menuIcon = '1';
+        img.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAD1SURBVHgBzZE/DgFREMZnZjdqN8AJHIEjcAMShQjFokAUCkRhUSCiwQlwA0fgBusGG4mCMOtteGLFnxUFXzPzZvL9Mm8G4NdCmTT0QZCRvbdNZjbK+fS62uz6iMgv62SRWcglV3auyqKFPEO8oyvKQoQ4IXVEjFzByIYIAQfgrGO8qGUWcKdSLhW1Y03vjRAxdtsjcKmLOSzS2McAaWaPJyyGNj4C1PV+W5rL6cR6j1t7eRXXAHGnpTTbz4qmmfvNbi7b6jt/KZuaOCZqDUMAhzFcruB6ic/0NcDxBcuiab3VN19bDo8BjGqU4OgFF1KATfgbnQDU3UrgFaO0lAAAAABJRU5ErkJggg==';
+        img.alt = '';
+        img.setAttribute('aria-hidden', 'true');
+        Object.assign(img.style, {
+          display: 'inline-block', width: '1em', height: '1em',
+          padding: '0', margin: '0', marginRight: '0.25em',
+          verticalAlign: 'text-bottom', lineHeight: '1',
+        });
+        link.insertBefore(img, link.firstChild);
+      };
+
+      // 문서 번호 배지 스타일 적용 헬퍼
+      const applyBadgeLink = (link: HTMLAnchorElement, label: string) => {
+        link.setAttribute('role', 'button');
+        link.textContent = label;
+        Object.assign(link.style, {
+          cursor: props.isLoading ? 'not-allowed' : 'pointer',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          width: '16px', height: '16px', borderRadius: '9999px',
+          backgroundColor: '#E0E0E0', color: '#333333',
+          fontSize: '11px', fontWeight: '600', textDecoration: 'none', lineHeight: '16px',
+        });
+      };
+
+      // 클릭 이벤트 등록 헬퍼
+      const addLinkClick = (link: HTMLAnchorElement, action: string, data: any) => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          if (props.isLoading) return;
+          if (props.callJS) {
+            void props.callJS('link', { action, ...data });
+          } else {
+            // @deprecated 레거시 폴백
+            const legacyMap: Record<string, ((d: any) => void) | undefined> = {
+              document: props.observeSourceClick,
+              mdtable: props.observeMDTableClick,
+            };
+            legacyMap[action]?.(data.data ?? data.args);
+          }
+        });
+      };
+
+      // 링크를 일반 텍스트로 교체
+      const replaceWithText = (link: HTMLAnchorElement, href: string) => {
+        const span = document.createElement('span');
+        span.textContent = link.textContent || href;
+        (span as HTMLElement).style.color = props.textColor ?? defaultTextColor;
+        if (link.parentNode) link.parentNode.replaceChild(span, link);
+      };
 
       el.querySelectorAll('a').forEach((link) => {
-        let href = link.getAttribute('href') || '';
+        const href = link.getAttribute('href') || '';
 
-        let invalid_link = true;
-        if (href.startsWith('menu:')) {
-          const key = href.substring('menu:'.length).trim();
-          const menus = Array.isArray(props.message.menus) ? props.message.menus : [];
-          let matched = menus.find((m: any) => m?.menuid === key || m?.menu_alias === key);
-          const matchedFromCurrent = matched;
-          if (!matched && Array.isArray(prevMenus) && prevMenus.length > 0) {
-            matched = prevMenus.find((m: any) => m?.menuid === key || m?.menu_alias === key);
+        // 웹 링크는 그대로 유지
+        if (href.startsWith('http://') || href.startsWith('https://')) return;
+
+        // action:args 형식 파싱
+        const colonIdx = href.indexOf(':');
+        if (colonIdx === -1) return;
+
+        const action = href.substring(0, colonIdx);
+        const key = href.substring(colonIdx + 1).trim();
+
+        if (props.resolveLink) {
+          // ── 제네릭 경로: 호스트 앱이 모든 링크 해석을 제공 ──
+          const resolved = props.resolveLink(action, key, props.message);
+          if (!resolved) {
+            replaceWithText(link, href);
+            return;
           }
 
-          if (matched) {
-            link.addEventListener('click', (e) => {
-              e.preventDefault();
-              if (!props.isLoading && props.observeMenuClick) {
-                props.observeMenuClick(matched);
-              }
-            });
-
-            link.setAttribute('role', 'button');
-            link.style.cursor = props.isLoading ? 'not-allowed' : 'pointer';
-            link.style.color = props.textColor ?? defaultTextColor;
-            link.style.textDecoration = 'underline';
-            link.title = matched.menu_alias !== '' ? matched.menu_alias : matched.menuid;
-
-            const img = document.createElement('img');
-            img.dataset.menuIcon = '1';
-            img.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAD1SURBVHgBzZE/DgFREMZnZjdqN8AJHIEjcAMShQjFokAUCkRhUSCiwQlwA0fgBusGG4mCMOtteGLFnxUFXzPzZvL9Mm8G4NdCmTT0QZCRvbdNZjbK+fS62uz6iMgv62SRWcglV3auyqKFPEO8oyvKQoQ4IXVEjFzByIYIAQfgrGO8qGUWcKdSLhW1Y03vjRAxdtsjcKmLOSzS2McAaWaPJyyGNj4C1PV+W5rL6cR6j1t7eRXXAHGnpTTbz4qmmfvNbi7b6jt/KZuaOCZqDUMAhzFcruB6ic/0NcDxBcuiab3VN19bDo8BjGqU4OgFF1KATfgbnQDU3UrgFaO0lAAAAABJRU5ErkJggg==';
-            img.alt = '';
-            img.setAttribute('aria-hidden', 'true');
-
-            img.style.display = 'inline-block';
-            img.style.width = '1em';
-            img.style.height = '1em';
-            img.style.padding = '0';
-            img.style.margin = '0';
-            img.style.marginRight = '0.25em';
-            (img.style as any).verticalAlign = 'text-bottom';
-            img.style.lineHeight = '1';
-            link.insertBefore(img, link.firstChild);
-            invalid_link = false;
-            if (matchedFromCurrent) {
-              orderedCurrentMenus.push(matchedFromCurrent);
-            }
+          if (resolved.style === 'hidden') {
+            link.textContent = '';
+            return;
           }
-        } else if (href.startsWith('document:')) {
-          const key = href.substring('document:'.length).trim();
-          const idxCurrent = currentDocs.findIndex((m: any) => m?.documentId === key);
 
-          if (idxCurrent !== -1) {
-            const doc = currentDocs[idxCurrent];
-            link.addEventListener('click', (e) => {
-              e.preventDefault();
-              if (!props.isLoading && props.observeSourceClick) {
-                props.observeSourceClick(doc);
-              }
-            });
+          addLinkClick(link, action, { args: key, data: resolved.clickData });
 
-            link.setAttribute('role', 'button');
-            const docId = (doc && (doc as any).documentId) ? (doc as any).documentId : key;
-            let assigned = docNumberMap.get(docId);
-            if (!assigned) {
-              currentDocCounter += 1;
-              assigned = currentDocCounter;
-              docNumberMap.set(docId, assigned);
-              orderedCurrentSources.push(doc);
-            }
-            link.textContent = String(assigned);
-            link.style.cursor = props.isLoading ? 'not-allowed' : 'pointer';
-            link.style.display = 'inline-flex';
-            (link.style as any).alignItems = 'center';
-            (link.style as any).justifyContent = 'center';
-            link.style.width = '16px';
-            link.style.height = '16px';
-            link.style.borderRadius = '9999px';
-            link.style.backgroundColor = '#E0E0E0';
-            link.style.color = '#333333';
-            link.style.fontSize = '11px';
-            link.style.fontWeight = '600';
-            link.style.textDecoration = 'none';
-            (link.style as any).lineHeight = '16px';
-            invalid_link = false;
+          if (resolved.style === 'badge') {
+            applyBadgeLink(link, resolved.label || '');
           } else {
-            const prevDoc = Array.isArray(prevDocs) ? prevDocs.find((m: any) => m?.documentId === key) : undefined;
-            if (prevDoc) {
-              link.addEventListener('click', (e) => {
-                e.preventDefault();
-                if (!props.isLoading && props.observeSourceClick) {
-                  props.observeSourceClick(prevDoc);
+            applyIconLink(link, resolved.title);
+          }
+
+          // 사이드바 컬렉션 수집
+          if (resolved.collectAs === 'sources' && resolved.clickData) orderedCurrentSources.push(resolved.clickData);
+        } else {
+          // ── @deprecated 레거시 경로: document/mdtable만 지원 ──
+          let handled = false;
+
+          if (action === 'document') {
+            let prevDocs: any[] = [];
+            try {
+              const chatDetails = localStorage.getItem(`${props.chatflowid}_EXTERNAL`);
+              if (chatDetails) {
+                const parsedDetails = JSON.parse(chatDetails);
+                const history: MessageType[] = parsedDetails.chatHistory || [];
+                const currentIdx = history.findIndex((m: MessageType) => m.messageId === props.message.messageId);
+                const prev = currentIdx >= 0 ? history.slice(0, currentIdx) : history;
+                for (const msg of prev) {
+                  if (Array.isArray(msg.sourceDocuments)) prevDocs = prevDocs.concat(msg.sourceDocuments);
                 }
-              });
-              link.setAttribute('role', 'button');
-              link.textContent = '*';
-              link.style.cursor = props.isLoading ? 'not-allowed' : 'pointer';
-              link.style.display = 'inline-flex';
-              (link.style as any).alignItems = 'center';
-              (link.style as any).justifyContent = 'center';
-              link.style.width = '16px';
-              link.style.height = '16px';
-              link.style.borderRadius = '9999px';
-              link.style.backgroundColor = '#E0E0E0';
-              link.style.color = '#333333';
-              link.style.fontSize = '11px';
-              link.style.fontWeight = '600';
-              link.style.textDecoration = 'none';
-              (link.style as any).lineHeight = '16px';
-              invalid_link = false;
+              }
+            } catch (e) { /* ignore */ }
+
+            const currentDocs = Array.isArray(props.message.sourceDocuments) ? props.message.sourceDocuments : [];
+            const idxCurrent = currentDocs.findIndex((m: any) => m?.documentId === key);
+            if (idxCurrent !== -1) {
+              const doc = currentDocs[idxCurrent];
+              addLinkClick(link, 'document', { args: key, data: doc });
+              applyBadgeLink(link, String(idxCurrent + 1));
+              orderedCurrentSources.push(doc);
+              handled = true;
             } else {
-              link.textContent = '';
-              href = '';
-            }
-          }
-        } else if (href.startsWith('master:')) {
-          const key = href.substring('master:'.length).trim();
-          const searches = Array.isArray(props.message.mastSearches) ? props.message.mastSearches : [];
-
-          let matched: string | null = null;
-          const scanMast = (list: any[]) => {
-            for (const search of list) {
-              for (const m of search.mastids || []) {
-                if (m === key) {
-                  return m;
-                }
+              const prevDoc = prevDocs.find((m: any) => m?.documentId === key);
+              if (prevDoc) {
+                addLinkClick(link, 'document', { args: key, data: prevDoc });
+                applyBadgeLink(link, '*');
+                handled = true;
+              } else {
+                link.textContent = '';
+                handled = true;
               }
             }
-            return null;
-          };
-          const matchedFromCurrent = scanMast(searches);
-          matched = matchedFromCurrent;
-          if (matched === null && Array.isArray(prevMastSearches) && prevMastSearches.length > 0) {
-            matched = scanMast(prevMastSearches);
+          } else if (action === 'mdtable') {
+            addLinkClick(link, 'mdtable', { args: key });
+            applyIconLink(link, key);
+            handled = true;
+          } else if (props.callJS) {
+            addLinkClick(link, action, { args: key });
+            applyIconLink(link, key);
+            handled = true;
           }
 
-          if (matched !== null) {
-            link.addEventListener('click', (e) => {
-              e.preventDefault();
-              if (!props.isLoading && props.observeMastClick) {
-                props.observeMastClick(matched);
-              }
-            });
-
-            link.setAttribute('role', 'button');
-            link.style.cursor = props.isLoading ? 'not-allowed' : 'pointer';
-            link.style.color = props.textColor ?? defaultTextColor;
-            link.style.textDecoration = 'underline';
-
-            const img = document.createElement('img');
-            img.dataset.menuIcon = '1';
-            img.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAD1SURBVHgBzZE/DgFREMZnZjdqN8AJHIEjcAMShQjFokAUCkRhUSCiwQlwA0fgBusGG4mCMOtteGLFnxUFXzPzZvL9Mm8G4NdCmTT0QZCRvbdNZjbK+fS62uz6iMgv62SRWcglV3auyqKFPEO8oyvKQoQ4IXVEjFzByIYIAQfgrGO8qGUWcKdSLhW1Y03vjRAxdtsjcKmLOSzS2McAaWaPJyyGNj4C1PV+W5rL6cR6j1t7eRXXAHGnpTTbz4qmmfvNbi7b6jt/KZuaOCZqDUMAhzFcruB6ic/0NcDxBcuiab3VN19bDo8BjGqU4OgFF1KATfgbnQDU3UrgFaO0lAAAAABJRU5ErkJggg==';
-            img.alt = '';
-            img.setAttribute('aria-hidden', 'true');
-
-            img.style.display = 'inline-block';
-            img.style.width = '1em';
-            img.style.height = '1em';
-            img.style.padding = '0';
-            img.style.margin = '0';
-            img.style.marginRight = '0.25em';
-            (img.style as any).verticalAlign = 'text-bottom';
-            img.style.lineHeight = '1';
-            link.insertBefore(img, link.firstChild);
-            invalid_link = false;
-            if (matchedFromCurrent) {
-              orderedCurrentMastIds.push(matchedFromCurrent);
-            }
+          if (!handled) {
+            replaceWithText(link, href);
           }
-        } else if (href.startsWith('mdtable:')) {
-          const mdTableId = href.substring('mdtable:'.length).trim();
-
-          link.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (!props.isLoading && props.observeMDTableClick) {
-              props.observeMDTableClick(mdTableId);
-            }
-          });
-
-          link.setAttribute('role', 'button');
-          link.style.cursor = props.isLoading ? 'not-allowed' : 'pointer';
-          link.style.color = props.textColor ?? defaultTextColor;
-          link.style.textDecoration = 'underline';
-          link.title = mdTableId;
-
-          const img = document.createElement('img');
-          img.dataset.menuIcon = '1';
-          img.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAD1SURBVHgBzZE/DgFREMZnZjdqN8AJHIEjcAMShQjFokAUCkRhUSCiwQlwA0fgBusGG4mCMOtteGLFnxUFXzPzZvL9Mm8G4NdCmTT0QZCRvbdNZjbK+fS62uz6iMgv62SRWcglV3auyqKFPEO8oyvKQoQ4IXVEjFzByIYIAQfgrGO8qGUWcKdSLhW1Y03vjRAxdtsjcKmLOSzS2McAaWaPJyyGNj4C1PV+W5rL6cR6j1t7eRXXAHGnpTTbz4qmmfvNbi7b6jt/KZuaOCZqDUMAhzFcruB6ic/0NcDxBcuiab3VN19bDo8BjGqU4OgFF1KATfgbnQDU3UrgFaO0lAAAAABJRU5ErkJggg==';
-          img.alt = '';
-          img.setAttribute('aria-hidden', 'true');
-
-          img.style.display = 'inline-block';
-          img.style.width = '1em';
-          img.style.height = '1em';
-          img.style.padding = '0';
-          img.style.margin = '0';
-          img.style.marginRight = '0.25em';
-          (img.style as any).verticalAlign = 'text-bottom';
-          img.style.lineHeight = '1';
-          link.insertBefore(img, link.firstChild);
-          invalid_link = false;
-        }
-
-        if (invalid_link && !href.startsWith('http://') && !href.startsWith("https://")) {
-          const span = document.createElement('span');
-          span.textContent = link.textContent || href;
-          (span as HTMLElement).style.color = props.textColor ?? defaultTextColor;
-          if (link.parentNode) link.parentNode.replaceChild(span, link);
         }
       });
 
-      // Update ordered sources for rendering
+      // Update ordered collections for sidebar rendering
       setOrderedSources(orderedCurrentSources);
-      setOrderedMenus(orderedCurrentMenus);
-      setOrderedMastIds(orderedCurrentMastIds);
 
       // Store the element ref for the copy function
       setBotMessageElement(el);
@@ -352,7 +265,7 @@ export const BotBubble = (props: Props) => {
           button.className =
             'py-2 px-4 mb-2 justify-center font-semibold text-white focus:outline-none flex items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-100 transition-all filter hover:brightness-90 active:brightness-75 file-annotation-button';
           button.addEventListener('click', function () {
-            downloadFile(annotations);
+            void downloadFile(annotations);
           });
           const svgContainer = document.createElement('div');
           svgContainer.className = 'ml-2';
@@ -651,12 +564,6 @@ export const BotBubble = (props: Props) => {
       } else {
         return props.avatarInfoSrc;
       }
-    } else if (props.message.mastSearches) {
-      if (props.message.mastSearches.length === 0) {
-        return props.avatarEmptySrc;
-      } else {
-        return props.avatarInfoSrc;
-      }
     } else {
       return props.avatarSrc;
     }    
@@ -721,10 +628,7 @@ export const BotBubble = (props: Props) => {
               data-testid="host-bubble"
               style={{
                 'background-color':
-                  (
-                    (props.message.sourceDocuments && props.message.sourceDocuments.length > 0)
-                    || (props.message.mastSearches && props.message.mastSearches.length > 0)
-                  )
+                  (props.message.sourceDocuments && props.message.sourceDocuments.length > 0)
                     ? props.backgroundColorEmphasize ?? defaultBackgroundColor
                     : props.backgroundColor ?? defaultBackgroundColor,
                 color: props.textColor ?? defaultTextColor,
@@ -795,10 +699,10 @@ export const BotBubble = (props: Props) => {
                       onSourceClick={() => {
                         if (URL) {
                           window.open(src.metadata.source, '_blank');
-                        } else {
-                          if (props.observeSourceClick) {
-                            props.observeSourceClick(src);
-                          }
+                        } else if (props.callJS) {
+                          void props.callJS('link', { action: 'document', args: src?.metadata?.documentId || '', data: src });
+                        } else if (props.observeSourceClick) {
+                          props.observeSourceClick(src);
                         }
                       }}
                     />

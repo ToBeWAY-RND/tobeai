@@ -1,145 +1,400 @@
-<!--
-chatflowid::
-    MANUAL
-    SEARCH
-    gpt-4o-mini : a1b9a25d-81ee-48cd-822b-09ae2bd89725
-    gpt-5-nano  : fc142d8d-be62-4565-bdb4-42b3ee258009
--->
-
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Flowise Chatbot Widget</title>
-</head>
-
-<body>
-<div id="root"></div>
-<script type="module">
-  import Chatbot from './web.js'
-  Chatbot.initFull({
-    chatflowid: 'MANUAL',
-    apiHost: 'https://aiml.tobeway.com:8443',
-    chatflowConfig: {
-      vars: {
-        mdmModule: 'MDM',
-        aimlUrl:"https://aiml.tobeway.com:8443",
-        gptModel:"gpt-4o-mini",
-        langCode: "KO",
-        mdmUrl: "https://rnd.tobeway.com:8000/tbwapi",
-        userId: "ksm",
-        userToken: "gejDolc+90dtL1t+mszjAPT0bIMdgqHCplmFf66mJ9s="
-      }
-    },
-    theme: {
-      button: {
-        backgroundColor: "#F8F8F8",
-        right: 20,
-        bottom: 20,
-        size: 48,
-        dragAndDrop: true,
-        iconColor: "#000000",
-        autoWindowOpen: {
-          autoOpen: true,
-          openDelay: 2,
-          autoOpenOnMobile: false
-        }
-      },
-      chatWindow: {
-        width: '700',
-        showTitle: true,
-        showAgentMessages: false,
-        title: "토비 AI",
-        welcomeMessage: "안녕하세요 김신모님! 필요한 정보나 궁금한 점이 있다면 말씀해주세요. 함께 해결해드리겠습니다.",
-        clearChatOnReload: false,
-        starterPrompts: ["MDM 업무규칙?"],
-        backgroundColor: "#F8F8F8",
-        closeButtonColor: "#343A40",
-        showCloseButton: true,
-        useObserverClose: true,
-        botMessage: {
-          backgroundColor: "#FFFFFF",
-          backgroundColorEmphasize: "#FFFFFF",
-          textColor: "#474747",
-          showAvatar: true,
-          avatarSrc: "https://rnd.tobeway.com:8000/web/tbwcore/images//icon/bot.png",
-          avatarLoadingSrc: "https://rnd.tobeway.com:8000/web/tbwcore/images//icon/bot_loading.gif",
-          avatarInfoSrc: "https://rnd.tobeway.com:8000/web/tbwcore/images//icon/bot_info.png",
-          avatarEmptySrc: "https://rnd.tobeway.com:8000/web/tbwcore/images/icon/bot_empty.png"
-        },
-        feedback: {
-          color: '#868E96'
-        },
-        userMessage: {
-          backgroundColor: "#F8CACA",
-          textColor: '#474747'
-        },
-        textInput: {
-          placeholder: "질문을 입력하세요.",
-          backgroundColor: "#FFFFFF",
-          textColor: "#D9D9D9",
-          sendButtonColor: "#2C3238",
-          autoFocus: true,
-          isSpeechToTextEnabled: true,
-        },
-        footer: {
-          text: "",
-          company: ""
-        },
-        gptModels: {
-          label: "모델",
-          defaultValue: "openai:::gpt-4o-mini",
-          values: [{"label":"OpenAI - GPT-4o mini","value":"openai:::gpt-4o-mini"},
-            {"label":"OpenAI - GPT-5 nano","value":"openai::low:gpt-5-nano"},
-            {"label":"OpenAI - GPT-5 mini","value":"openai::low:gpt-5-mini"},
-            {"label":"Bedrock - Nova Pro","value":"bedrock:::apac.amazon.nova-pro-v1:0"},
-            {"label":"HuggingFace - Qwen 3 \/ 8B","value":"ollama:::qwen3:8b"},
-            {"label":"HuggingFace - Llama 3.2 \/ 3B","value":"ollama:::llama3.2:3b"}]
-        },
-        mdmModules: {
-          label: "모듈",
-          defaultValue: "MDM",
-          values: [
-            { value: 'MDM', label: 'MDM' },
-            { value: 'DOM', label: 'DOM' },
-            { value: 'DQM', label: 'DQM' },
-            { value: 'META', label: 'META' },
-            { value: 'DI', label: 'DI' },
-            { value: 'SNOP', label: 'S&OP' },
-          ]
-        },
-      }
-    },
-    observersConfig: {
-      // The bot message stack has changed
-      observeMessages: (messages) => {
-        console.log({ messages });
-      },
-      // Source link has clicked
-      observeSourceClick: (source) => {
-        //console.log(source);
-        if (source && source.metadata) {
-          //alert('PDF Viewer를 띄우겠습니다.' + source.metadata.solution + ' ' + source.metadata.solution + ' page');
-        }
-        console.log(source);
-      },
-      // The bot message stack has changed
-      observeMenuClick: (menu) => {
-        console.log('observeMenuClick', { menu });
-      },
-      observeCloseClick: () => {
-        if (parent.parent && parent.parent.closeToBeAI) {
-          parent.parent.closeToBeAI();
-        }
-      },
+  <title>ToBeAI Dev Test</title>
+  <link rel="icon" href="data:," />
+  <style>
+    html, body { margin: 0; padding: 0; font-family: sans-serif; height: 100%; overflow: hidden; }
+    #toolbar {
+      background: #f0f0f0; border-bottom: 1px solid #ccc;
+      padding: 6px 12px; display: flex; gap: 8px; align-items: center; font-size: 13px;
+      flex-wrap: wrap; flex-shrink: 0;
     }
-  })
-</script>
+    #toolbar select, #toolbar input, #toolbar button { font-size: 13px; padding: 3px 6px; }
+    #toolbar label { font-weight: 600; }
+    #toolbar .sep { border-left: 1px solid #ccc; height: 20px; }
+    #toolbar button { cursor: pointer; background: #4a7aff; color: #fff; border: none; border-radius: 4px; padding: 4px 10px; }
+    #toolbar button:hover { background: #3560d4; }
+    #toolbar .status { margin-left: auto; color: #666; }
+    #toolbar { position: relative; z-index: 99999; }
+    #chatbot-container { }
+  </style>
+</head>
+<body>
+
+<div id="toolbar">
+  <label>chatType:</label>
+  <select id="sel-chattype">
+    <option value="SEARCH">SEARCH</option>
+    <option value="AGENTSEARCH">AGENTSEARCH</option>
+    <option value="MANUAL">MANUAL</option>
+  </select>
+  <div class="sep"></div>
+  <label>aiml:</label>
+  <select id="sel-aiml">
+    <option value="http://localhost:8443">Local</option>
+    <option value="https://aiml.tobeway.com:8443">Server</option>
+  </select>
+  <label>mdm:</label>
+  <select id="sel-mdm">
+    <option value="http://localhost:8080/tbwapi">Local</option>
+    <option value="https://rnd.tobeway.com:8000/tbwapi">Server</option>
+  </select>
+  <div class="sep"></div>
+  <label>token:</label>
+  <input id="inp-token" placeholder="(paste MDM token or fetch)" size="24" />
+  <button id="btn-fetch-token" title="Fetch from MDM (must be logged in)">Fetch</button>
+  <div class="sep"></div>
+  <button id="btn-launch">Launch</button>
+  <span class="status" id="status-text"></span>
+</div>
+
 <div id="chatbot-container">
   <flowise-fullchatbot></flowise-fullchatbot>
 </div>
-</body>
 
+<script type="module">
+  import Chatbot from './web.js';
+
+  // ─── Helpers ───
+  const $ = (id) => document.getElementById(id);
+  const getParam = (name, def) => new URLSearchParams(location.search).get(name) ?? def;
+  const setStatus = (msg) => { $('status-text').textContent = msg; };
+
+  // ─── Restore from URL query params ───
+  $('sel-chattype').value = getParam('chattype', 'SEARCH');
+  $('sel-aiml').value     = getParam('aiml', 'http://localhost:8443');
+  $('sel-mdm').value      = getParam('mdm', 'http://localhost:8080/tbwapi');
+  $('inp-token').value    = getParam('token', '');
+
+  // ─── Fetch token: open in new tab (CORS blocks cross-origin fetch) ───
+  $('btn-fetch-token').addEventListener('click', () => {
+    const mdmRoot = $('sel-mdm').value.replace(/\/tbwapi\/?$/, '');
+    window.open(mdmRoot + '/web/flowise/token_json.jsp', '_blank');
+    setStatus('Copy token from the opened tab and paste here');
+  });
+
+  // Document lookup across all messages (for resolveLink)
+  let allDocs = {};
+  // Per-message doc numbering for badge labels
+  const docCounters = new WeakMap();
+
+  // ─── Launch chatbot ───
+  function launch() {
+    const chatType  = $('sel-chattype').value;
+    const aimlUrl   = $('sel-aiml').value;
+    const mdmUrl    = $('sel-mdm').value;
+    const userToken = $('inp-token').value;
+    const domainId  = 'CUSTOMER';
+
+    // Persist to URL for easy refresh/bookmark
+    const u = new URL(location.href);
+    u.searchParams.set('chattype', chatType);
+    u.searchParams.set('aiml', aimlUrl);
+    u.searchParams.set('mdm', mdmUrl);
+    if (userToken) u.searchParams.set('token', userToken);
+    else u.searchParams.delete('token');
+    history.replaceState(null, '', u);
+
+    // Calculate available height below toolbar
+    const toolbarH = $('toolbar').offsetHeight;
+    const chatHeight = window.innerHeight - toolbarH;
+
+    const conf = {
+      chatflowid: chatType + '_' + domainId,
+      apiHost: aimlUrl,
+
+      chatflowConfig: {
+        vars: {
+          chatType,
+          domainId,
+          domainName: '고객',
+          domainDescription: '고객 마스터 데이터',
+          userId: 'lesliejjy',
+          userName: '정지영',
+          userToken,
+          langCode: 'KO',
+          mdmUrl,
+          aimlUrl,
+          gptModel: 'gemini::low:gemini-3.1-flash-lite-preview',
+          speechToTextModel: 'openai:whisper-1',
+          embeddingModelId: 'VCA1',
+          embeddingModelName: 'openai:text-embedding-3-small',
+          embeddingModelDimension: '1536',
+          mdmModule: 'MDM',
+          applIds: '',
+          dataType: 'Master Data (기준정보)',
+          propertiesJson: [
+            {
+              id: 'ACCT.COUNTRY', name: '국가', short_name: 'Country', type: 'enum',
+              description: '계좌 국가 코드',
+              enum_options: [
+                { id: 'KR', name: '한국' }, { id: 'US', name: '미국' }, { id: 'JP', name: '일본' },
+                { id: 'CN', name: '중국' }, { id: 'DE', name: '독일' }, { id: 'VN', name: '베트남' },
+              ]
+            },
+            {
+              id: 'REP', name: '대표명', short_name: 'Representative', type: 'string',
+              description: '대표자 이름',
+            },
+            {
+              id: 'ANRED', name: '고객유형', short_name: 'Title', type: 'enum',
+              description: '고객 유형 (개인/법인)',
+              enum_options: [
+                { id: '0001', name: '개인' }, { id: '0002', name: '법인' },
+              ]
+            },
+          ],
+		  classesJson: {
+            'D': '은행',
+			'C': '건설업'
+		  }
+        }
+      },
+
+      // ─── i18n resources (Step 2) ───
+      resources: {
+        labels: {
+          skip: 'Skip',
+          chooseDefault: 'Please select an option',
+          nullValue: 'No value',
+          chooseOne: {
+            PROP:     "Select the property for '%s'",
+            VALUE:    "Select the value for '%s'",
+            UNIT:     "Select the unit for '%s'",
+            AREATYPE: "Select the area type for '%s'",
+            AREA:     "Select the area for '%s'",
+            CLASS:    "Select the class for '%s'",
+            CATEGORY: "Select the category for '%s'",
+            CORP:     "Select the company to collect info",
+          },
+          categoryLabels: { CLASS: 'Class', PROPERTY: 'Property', AREA: 'Area' },
+          loading: {
+            search:             'Building search conditions',
+            master_retriever:   'Similarity search for %s',
+            get_property_list:  'Loading property list',
+            fetch_valuelist:    'Fetching value list for %s',
+            get_master_info:    'Loading detail for %s',
+            choose_one_property:'Identifying property for %s',
+            _unknown:           "Calling '%s'",
+          }
+        }
+      },
+
+      // ─── Theme ───
+      theme: {
+        chatWindow: {
+          showTitle: true,
+          showAgentMessages: false,
+          height: chatHeight,
+          title: 'ToBeAI Dev (' + chatType + ')',
+          welcomeMessage: '안녕하세요. 어떻게 도와드릴까요?',
+          clearChatOnReload: false,
+          starterPrompts:
+            chatType === 'SEARCH'      ? ['속성으로 키워드 검색을 하고 싶어요', '유사 검색을 하고 싶어요'] :
+            chatType === 'AGENTSEARCH' ? ['한국에 계좌정보가 있고 대표명이 홍길동인 법인 고객'] :
+                                         ['기준정보의 검색 방법에 대해 알려주세요.'],
+          backgroundColor: '#ffffff',
+          backgroundColorEmphasize: '#f5f5f5',
+          botMessage: { backgroundColor: '#f5f5f5', showAvatar: false },
+          userMessage: { backgroundColor: '#DDE3FF', textColor: '#474747' },
+          textInput: {
+            placeholder: 'Type your question...',
+            backgroundColor: '#ffffff',
+            textColor: '#303235',
+            sendButtonColor: '#5473F9',
+            autoFocus: true,
+          },
+          feedback: { color: '#868E96' },
+          footer: { showFooter: false },
+        }
+      },
+
+      // ─── Observers ───
+      observersConfig: {
+        observeLoading: (isLoading) => {
+          if (!isLoading) {
+            setStatus('Ready');
+		  }
+        },
+        observeMessages: (messages) => {
+          // Build document lookup from all messages for resolveLink
+          allDocs = {};
+          for (const msg of messages) {
+            if (Array.isArray(msg.sourceDocuments)) {
+              for (const doc of msg.sourceDocuments) {
+                if (doc?.documentId) allDocs[doc.documentId] = doc;
+              }
+            }
+          }
+        },
+
+        // Generic JS action dispatcher (Step 1)
+        callJS: async (action, params) => {
+          console.log('[callJS]', action, params);
+
+          if (action === 'link') {
+            if (params.action === 'master') {
+              // New master: format -> classid=X&mastid=Y
+              const qp = new URLSearchParams(params.args);
+              const mastid = qp.get('mastid') || params.args;
+              const classid = qp.get('classid') || '';
+              alert('Open master detail:\n  classid=' + classid + '\n  mastid=' + mastid);
+              return;
+            }
+            if (params.action === 'document') {
+              console.log('Open document:', params.data);
+              return;
+            }
+            if (params.action === 'menu') {
+			  console.log('Open menu:', params.data);
+			  return;
+			}
+            console.log('Link click:', params.action, params);
+            return;
+          }
+
+          if (action === 'fetch_valuelist') {
+            console.log('[callJS] fetch_valuelist', params);
+            // TODO: call srch_valuelist_json.jsp
+            return { ok: true, data: [] };
+          }
+
+          if (action === 'search') {
+            console.log('[callJS] search', params);
+            const classes = conf.chatflowConfig.vars.classesJson || {};
+            const props = conf.chatflowConfig.vars.propertiesJson || [];
+
+            // Build readable summary
+            const lines = ['=== Search Query ==='];
+            if (params.classid) {
+              lines.push('Class: ' + params.classid + ' (' + (classes[params.classid] || '?') + ')');
+            }
+            if (params.properties) {
+              for (const [pid, val] of Object.entries(params.properties)) {
+                const p = props.find(p => p.id === pid);
+                const name = p ? p.name : pid;
+                lines.push('Property [' + name + ']: ' + JSON.stringify(val));
+              }
+            }
+            if (params.areas) {
+              for (const [aid, val] of Object.entries(params.areas)) {
+                lines.push('Area [' + aid + ']: ' + JSON.stringify(val));
+              }
+            }
+
+            // Check if classid changed → navigate to new classid (reloads page)
+            if (params.classid && params.classid !== getParam('classid', 'CUSTOMER')) {
+              console.log('[callJS] search: class move to', params.classid);
+              const url = new URL(location.href);
+              url.searchParams.set('classid', params.classid);
+              // In real MDM this navigates the search page; here we reload with new classid
+              if (confirm(lines.join('\n') + '\n\n→ Class move! Reload with classid=' + params.classid + '?')) {
+                window.location.href = url.toString();
+              }
+              return { hold: true };
+            }
+
+            alert(lines.join('\n'));
+            return { ok: true };
+          }
+
+          if (action === 'fill_input') {
+            console.log('[callJS] fill_input', params);
+            alert('Fill input:\n' + JSON.stringify(params, null, 2));
+            return { ok: true };
+          }
+
+          if (action === 'open_search_window') {
+            console.log('[callJS] open_search_window', params);
+            alert('Open search window:\n' + JSON.stringify(params, null, 2));
+            return { ok: true };
+          }
+
+          if (action === 'submit') {
+            console.log('[callJS] submit', params);
+            alert('Form submitted:\n' + JSON.stringify(params, null, 2));
+            return { ok: true };
+          }
+
+          if (action === 'get_value_pattern') {
+            console.log('[callJS] get_value_pattern', params);
+            return { ok: true, data: {} };
+          }
+
+          if (action === 'clear_fields' || action === 'clear_all_fields') {
+            console.log('[callJS]', action, params);
+            return { ok: true };
+          }
+
+          console.log('[callJS] unhandled action:', action, params);
+          return { ok: true };
+        },
+
+        // Link resolver (Step 1 refactor)
+        resolveLink: (action, key, message) => {
+          if (action === 'master') {
+            return { style: 'icon', title: key, clickData: key };
+          }
+          if (action === 'document') {
+            // Find doc in current message or from previous messages
+            const docs = Array.isArray(message.sourceDocuments) ? message.sourceDocuments : [];
+            let doc = docs.find(d => d?.documentId === key);
+            if (!doc) doc = allDocs[key];
+            if (!doc) return { style: 'hidden' };
+
+            // Per-message sequential numbering (deduped)
+            if (!docCounters.has(message)) docCounters.set(message, { n: 0, map: new Map() });
+            const state = docCounters.get(message);
+            let num = state.map.get(key);
+            if (num === undefined) { state.n++; num = state.n; state.map.set(key, num); }
+
+            return { style: 'badge', label: String(num), clickData: doc, collectAs: 'sources' };
+          }
+          if (action === 'menu' || action === 'mdtable') {
+            return { style: 'icon', title: key, clickData: key };
+          }
+          // Unknown action - still clickable
+          return { style: 'icon', title: key, clickData: key };
+        },
+
+        observeCloseClick: () => { console.log('close'); },
+
+        // Resolve property name from ID (for LoadingBubble)
+        fetchPropName: (propId) => {
+          const props = conf.chatflowConfig.vars.propertiesJson;
+          const p = props.find(p => p.id === propId);
+          return p ? p.name : propId;
+        },
+
+        // Resolve area type name from ID (for LoadingBubble)
+        fetchAreaTypeName: async (areaType) => {
+          return areaType; // no areas configured in dev
+        },
+
+        // Refresh token on each message send
+        applyExtraVars: async () => {
+          return { userToken: $('inp-token').value };
+        },
+
+      }
+    };
+
+    // Destroy previous instance, then ensure element exists
+    Chatbot.destroy();
+    const container = $('chatbot-container');
+    container.innerHTML = '';
+    container.appendChild(document.createElement('flowise-fullchatbot'));
+
+    setStatus('Launching...');
+    Chatbot.initFull(conf);
+    setStatus(chatType + ' ready');
+  }
+
+  $('btn-launch').addEventListener('click', launch);
+  launch(); // auto-launch
+</script>
+</body>
 </html>

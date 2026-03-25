@@ -81,8 +81,6 @@ export type IAgentReasoning = {
   usedTools?: any[];
   artifacts?: FileUpload[];
   sourceDocuments?: any[];
-  menus?: any[];
-  mastSearches?: any[];
   instructions?: string;
   nextAgent?: string;
 };
@@ -121,8 +119,6 @@ export type MessageType = {
   message: string;
   type: messageType;
   sourceDocuments?: any;
-  menus?: any;
-  mastSearches?: any;
   thoughts?: any;
   fileAnnotations?: any;
   fileUploads?: Partial<FileUpload>[];
@@ -151,29 +147,60 @@ type IUploads = {
 }[];
 
 type observerConfigType = (accessor: any) => void;
+
+/** Link resolution result returned by resolveLink callback */
+export type LinkResolveResult = {
+  /** 'icon' = underline + menu icon, 'badge' = numbered circle, 'hidden' = remove link text */
+  style: 'icon' | 'badge' | 'hidden';
+  /** Tooltip text (icon style) */
+  title?: string;
+  /** Badge label (badge style) */
+  label?: string;
+  /** Data passed to callJS('link', ...) on click */
+  clickData?: any;
+  /** Which ordered sidebar collection to add this item to */
+  collectAs?: 'sources';
+};
+
 export type observersConfigType = {
   observeUserInput?: observerConfigType;
   observeLoading?: observerConfigType;
   observeMessages?: observerConfigType;
-  observeSourceClick?: observerConfigType;
-  observeMenuClick?: observerConfigType;
-  observeMastClick?: observerConfigType;
-  observeMDTableClick?: observerConfigType;
   observeCloseClick?: () => Promise<void>;
   disableButton?: () => void;
   enableButton?: () => void;
   alertAgentError?: () => void;
-  fetchPropName?: (propId: string) => Promise<string> | string;
-  fetchAreaTypeName?: (areaType: string) => Promise<string>;
+  applyExtraVars?: () => Promise<Record<string, string>> | Record<string, string>;
+  renderSummaryText?: (calledTools: any[]) => string[] | undefined;
+  /** Generic JS action dispatcher — handles link clicks, value list fetches, form submits, search, fill_input, etc. */
+  callJS?: (action: string, params: any) => Promise<any>;
+  /** Synchronous link resolver. Called for each non-http link in bot messages. */
+  resolveLink?: (action: string, key: string, message: any) => LinkResolveResult | null;
+  // @deprecated — callJS + resolveLink로 마이그레이션 예정. 하위 호환성을 위해 유지
   applySearch?: (data: any) => Promise<any>;
   applyInputField?: (data: any) => any;
-  applyExtraVars?: () => Record<string, string>;
+  observeSourceClick?: observerConfigType;
+  observeMDTableClick?: observerConfigType;
+  fetchPropName?: (propId: string) => Promise<string> | string;
+  fetchAreaTypeName?: (areaType: string) => Promise<string>;
   getValuePatterns?: (data: any) => any;
   clearFields?: (data: any) => any;
   clearAllFields?: (data: any) => any;
   openSearchWindow?: (data: any) => any;
   submitForm?: (data: any) => any;
-  renderSummaryText?: (calledTools: any[]) => string[] | undefined;
+};
+
+export type ResourceLabels = {
+  skip?: string;
+  chooseDefault?: string;
+  nullValue?: string;
+  chooseOne?: Record<string, string>;
+  categoryLabels?: Record<string, string>;
+  loading?: Record<string, string>;
+};
+
+export type BotResources = {
+  labels?: ResourceLabels;
 };
 
 export type BotProps = {
@@ -183,6 +210,7 @@ export type BotProps = {
   chatflowConfig?: Record<string, unknown>;
   gptModels?: ComboBoxTheme;
   mdmModules?: ComboBoxTheme;
+  resources?: BotResources;
   backgroundColor?: string;
   welcomeMessage?: string;
   initialMessage?: string;
@@ -726,85 +754,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     setShowLoadingBubble(true);
   };
 
-  const updateLastMessageMenus = (menus: any[]) => {
-    setMessages((prevMessages) => {
-      const allMessages = [...cloneDeep(prevMessages)];
-      if (allMessages[allMessages.length - 1].type === 'userMessage') return allMessages;
-
-      try {
-        const lastMsg = allMessages[allMessages.length - 1];
-        const text: string = (lastMsg?.message ?? '').toString();
-        const textLower = text.toLowerCase();
-
-        // Helper to find the earliest mention index of menuid or menu_alias
-        const getMentionIndex = (menu: any): number => {
-          if (!menu) return -1;
-          const candidates: string[] = [];
-          if (typeof menu.menuid === 'string' && menu.menuid.trim() !== '') candidates.push(menu.menuid);
-          if (typeof menu.menu_alias === 'string' && menu.menu_alias.trim() !== '') candidates.push(menu.menu_alias);
-
-          let best = -1;
-          for (const raw of candidates) {
-            const token = String(raw).trim();
-            if (!token) continue;
-            // Case-insensitive search; prefer word-boundary match when possible
-            const tokenLower = token.toLowerCase();
-
-            // Try exact word boundary match first
-            // Build a simple regex escaping special characters
-            const escaped = tokenLower.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-            const wordBoundaryRegex = new RegExp(`(^|[^a-z0-9_])(${escaped})(?=$|[^a-z0-9_])`, 'i');
-            const boundaryMatch = text.match(wordBoundaryRegex);
-            if (boundaryMatch && typeof boundaryMatch.index === 'number') {
-              const idx = boundaryMatch.index + (boundaryMatch[1] ? boundaryMatch[1].length : 0);
-              best = best === -1 ? idx : Math.min(best, idx);
-              continue;
-            }
-
-            // Fallback: substring search
-            const idx2 = textLower.indexOf(tokenLower);
-            if (idx2 !== -1) {
-              best = best === -1 ? idx2 : Math.min(best, idx2);
-            }
-          }
-          return best;
-        };
-
-        // Stable sort: compute mention index and then order
-        const withKeys = (Array.isArray(menus) ? menus : []).map((m, i) => ({ m, i, mi: getMentionIndex(m) }));
-        withKeys.sort((a, b) => {
-          const aMentioned = a.mi !== -1;
-          const bMentioned = b.mi !== -1;
-          if (aMentioned && bMentioned) {
-            // Earlier appearance in text first; tie-break by original index to keep stable
-            if (a.mi !== b.mi) return a.mi - b.mi;
-            return a.i - b.i;
-          }
-          if (aMentioned) return -1;
-          if (bMentioned) return 1;
-          return a.i - b.i; // preserve original order for non-mentioned
-        });
-        allMessages[allMessages.length - 1].menus = withKeys.map((x) => x.m);
-      } catch (e) {
-        // Fallback to original order on any error
-        allMessages[allMessages.length - 1].menus = menus;
-      }
-
-      addChatMessage(allMessages);
-      return allMessages;
-    });
-  };
-
-  const updateLastMessageMastSearches = (mastSearches: any[]) => {
-    setMessages((prevMessages) => {
-      const allMessages = [...cloneDeep(prevMessages)];
-      if (allMessages[allMessages.length - 1].type === 'userMessage') return allMessages;
-      allMessages[allMessages.length - 1].mastSearches = mastSearches;
-      addChatMessage(allMessages);
-      return allMessages;
-    });
-  };
-
   const updateLastMessageFileAnnotations = (fileAnnotations: any) => {
     setMessages((prevMessages) => {
       const allMessages = [...cloneDeep(prevMessages)];
@@ -898,7 +847,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
       let prompt: string;
 
-      const prompts = {
+      const defaultPrompts: Record<string, string> = {
         PROP: "'%s'에 해당하는 속성을 선택해주세요",
         VALUE: "'%s' 속성에 들어갈 값을 선택해주세요",
         UNIT: "'%s' 속성에 사용할 단위를 선택해주세요",
@@ -908,6 +857,10 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         CATEGORY: "'%s'에 해당하는 카테고리를 선택해주세요.",
         CORP: "사업자 정보를 수집할 회사를 선택해주세요."
       };
+      const chooseOneLabels = props.resources?.labels?.chooseOne;
+      const prompts: Record<string, string> = chooseOneLabels
+        ? { ...defaultPrompts, ...chooseOneLabels }
+        : defaultPrompts;
       type PromptKey = keyof typeof prompts;
 
       const promptType = data?.prompt_type as PromptKey;
@@ -918,30 +871,22 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       } else if (promptType) {
         prompt = prompts[promptType];
       } else {
-        prompt = '옵션을 선택해주세요';
+        prompt = props.resources?.labels?.chooseDefault || '옵션을 선택해주세요';
       }
 
       let options: any[];
 
       if (promptType === 'CATEGORY') {
+        const defaultCategoryLabels: Record<string, string> = { CLASS: '분류', PROPERTY: '속성', AREA: '조직 영역' };
+        const categoryLabels = props.resources?.labels?.categoryLabels
+          ? { ...defaultCategoryLabels, ...props.resources.labels.categoryLabels }
+          : defaultCategoryLabels;
         const categories: Array<string> = data?.options || [];
         options = categories
-          .map((category) => {
-            let label: string | null;
-            if (category === 'CLASS') {
-              label = '분류';
-            } else if (category === 'PROPERTY') {
-              label = '속성';
-            } else if (category === 'AREA') {
-              label = '조직 영역';
-            } else {
-              label = null;
-            }
-            return {
-              label: label,
-              type: category,
-            };
-          })
+          .map((category) => ({
+            label: categoryLabels[category] ?? null,
+            type: category,
+          }))
           .filter((option) => option.label !== null);
       } else {
         options = data?.options || [];
@@ -952,7 +897,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
       if (addNull) {
         // Null 버튼 추가
-        options.push({ type: '__NULL__', label: '값 없음' });
+        options.push({ type: '__NULL__', label: props.resources?.labels?.nullValue || '값 없음' });
       }
 
       const concat_options = options
@@ -988,7 +933,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         });
 
         // 건너뛰기 버튼 추가
-        options.push({ type: 'skip', label: '건너뛰기' });
+        options.push({ type: 'skip', label: props.resources?.labels?.skip || '건너뛰기' });
 
         setMessages((prev) => {
           const all = [...cloneDeep(prev)];
@@ -1005,171 +950,65 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       return;
     }
 
-    if (parsedAction?.action === 'search') {
-      const data: any = parsedAction.data || {};
+    // ── 제네릭 callJS 액션 처리 (search, fill_input 포함) ──
+    const actionName = parsedAction?.action;
+    if (actionName && actionName !== 'choose_one_option') {
+      if (props.observersConfig?.callJS) {
+        const data: any = parsedAction.data || {};
+        setChooseOneOptionCache({});
+        setLoading(true);
 
-      // 속성 선택 캐쉬 초기화
-      setChooseOneOptionCache({});
-
-      setLoading(true);
-
-      setMessages((prev) => {
-        const all = [...cloneDeep(prev)];
-        if (all.length > 0) {
-          const lastIdx = all.length - 1;
-          if (all[lastIdx].type === 'apiMessage') {
-            (all[lastIdx] as any).action = { ...parsedAction } as IAction;
+        (async () => {
+          let result: any = { ok: true, data: {} };
+          try {
+            result = await props.observersConfig!.callJS!(actionName, data);
+          } catch (e) {
+            console.error('callJS error:', actionName, e);
+            result = { ok: false, error: String(e) };
           }
-        }
-        addChatMessage(all);
-        return all;
-      });
 
-      // applySearch 호출 후 결과 전송
-      (async () => {
-        let success = true;
-        if (props.closeBot) {
-          props.closeBot();
-        }
-
-        try {
-          const applySearchFn = botProps.observersConfig?.applySearch;
-          if (typeof applySearchFn === 'function') {
-            const res = await applySearchFn(data);
-            if (res && typeof res === 'object' && 'ok' in res) {
-              if (res.ok === 'N') {
-                data.error = res;
-                success = false;
-              } else if (res.ok === 'M') {
-                setMessages((prevMessages) => {
-                  const allMessages = [...cloneDeep(prevMessages)];
-                  if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {
-                    if (allMessages[allMessages.length - 1].pendingAction) {
-                      return prevMessages;
-                    }
-                    allMessages[allMessages.length - 1].pendingAction = allMessages[allMessages.length - 1].action;
-                    allMessages[allMessages.length - 1].action = null;
-                  }
-                  addChatMessage(allMessages);
-                  return allMessages;
-                });
-
-                return;
+          // 'hold' → 액션을 보류 상태로 전환 (예: classid 변경 시 페이지 이동 대기)
+          if (result && result.hold === true) {
+            setMessages((prevMessages) => {
+              const allMessages = [...cloneDeep(prevMessages)];
+              if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {
+                if (allMessages[allMessages.length - 1].pendingAction) return prevMessages;
+                allMessages[allMessages.length - 1].pendingAction = allMessages[allMessages.length - 1].action;
+                allMessages[allMessages.length - 1].action = null;
               }
-            }
+              addChatMessage(allMessages);
+              return allMessages;
+            });
+            return;
           }
-        } catch (e: any) {
-          data.error = { ok: 'N', message: e.message };
-          success = false;
-        }
 
-        setMessages((prevMessages) => {
-          const allMessages = [...cloneDeep(prevMessages)];
-          if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {
-            allMessages[allMessages.length - 1].search = data;
-            allMessages[allMessages.length - 1].action = null;
-            allMessages[allMessages.length - 1].pendingAction = null;
-          }
-          addChatMessage(allMessages);
+          await handleSubmit('', parsedAction, result, true);
+        })();
+        return;
+      }
 
-          return allMessages;
-        });
-
-        await handleSubmit('', parsedAction, { ok: success }, true);
-      })();
-      return;
+      // @deprecated 레거시 폴백 — callJS가 없는 경우
+      const legacyActions: Record<string, ((data: any) => any) | undefined> = {
+        search: props.observersConfig?.applySearch,
+        fill_input: props.observersConfig?.applyInputField,
+        get_value_pattern: props.observersConfig?.getValuePatterns,
+        clear_fields: props.observersConfig?.clearFields,
+        clear_all_fields: props.observersConfig?.clearAllFields,
+        open_search_window: props.observersConfig?.openSearchWindow,
+        submit: props.observersConfig?.submitForm,
+      };
+      const legacyFn = legacyActions[actionName];
+      if (legacyFn) {
+        const data: any = parsedAction.data || {};
+        setLoading(true);
+        (async () => {
+          let result: any = { ok: true };
+          try { result = await legacyFn(data); } catch (e) { result = { ok: false, error: String(e) }; }
+          await handleSubmit('', parsedAction, result, true);
+        })();
+        return;
+      }
     }
-
-
-    if (parsedAction?.action === 'fill_input') {
-      const data: any = parsedAction.data || {};
-
-      // 속성 선택 캐쉬 초기화
-      setChooseOneOptionCache({});
-      setLoading(true);
-
-      setMessages((prev) => {
-        const all = [...cloneDeep(prev)];
-        if (all.length > 0) {
-          const lastIdx = all.length - 1;
-          if (all[lastIdx].type === 'apiMessage') {
-            (all[lastIdx] as any).action = { ...parsedAction } as IAction;
-          }
-        }
-        addChatMessage(all);
-        return all;
-      });
-
-      // applyInputField 호출 후 결과 전송
-      (async () => {
-        let result: any = {
-          ok: false, error: 'Unknown error'
-        }
-
-        try {
-          const applyInputFn = botProps.observersConfig?.applyInputField;
-          if (typeof applyInputFn === 'function') {
-            const res = applyInputFn(data);
-
-            if (res && typeof res === 'object' && 'ok' in res) {
-              result = res;
-
-              if (!res.ok) {
-                data.error = res;
-              }
-            }
-          }
-        } catch (e: any) {
-          data.error = { ok: false , message: e.message };
-        }
-
-        setMessages((prevMessages) => {
-          const allMessages = [...cloneDeep(prevMessages)];
-          if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {
-            allMessages[allMessages.length - 1].inputs = deepMergeInputs(allMessages[allMessages.length - 1].inputs, data);
-            allMessages[allMessages.length - 1].action = null;
-            allMessages[allMessages.length - 1].pendingAction = null;
-          }
-          addChatMessage(allMessages);
-
-          return allMessages;
-        });
-
-        await handleSubmit('', parsedAction, result, true);
-      })();
-      return;
-    }
-
-	const simpleActions = {
-		get_value_pattern: props.observersConfig?.getValuePatterns,
-		clear_fields: props.observersConfig?.clearFields,
-		clear_all_fields: props.observersConfig?.clearAllFields,
-		open_search_window: props.observersConfig?.openSearchWindow,
-		submit: props.observersConfig?.submitForm
-	}
-
-	type SimpleAction = keyof typeof simpleActions;
-	const actionName = parsedAction?.action as SimpleAction;
-
-	if (actionName) {
-		const data: any = parsedAction.data || {};
-
-		setLoading(true);
-
-		let result: any = { ok: true, data: {} };
-
-		const actionFn = simpleActions[actionName];
-
-		if (actionFn) {
-			result = actionFn(data);
-		}
-
-		// getValuePatterns 호출 후 결과 전송
-		(async () => {
-			await handleSubmit('', parsedAction, result, true);
-		})();
-		return;
-	}
 
     setMessages((data) => {
       const updated = data.map((item, i) => {
@@ -1333,12 +1172,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
             break;
           case 'calledTools':
             updateLoadingCalledTools(payload.data);
-            break;
-          case 'menus':
-            updateLastMessageMenus(payload.data);
-            break;
-          case 'mastSearches':
-            updateLastMessageMastSearches(payload.data);
             break;
           case 'fileAnnotations':
             updateLastMessageFileAnnotations(payload.data);
@@ -1589,7 +1422,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       if (!body.overrideConfig) body.overrideConfig = {};
       if (!body.overrideConfig.vars) body.overrideConfig.vars = {};
 
-      const extraVars = props.observersConfig.applyExtraVars();
+      const extraVars = await props.observersConfig.applyExtraVars();
 
       body.overrideConfig.vars = { ...((body.overrideConfig as any).vars ), ...extraVars };
     }
@@ -1658,8 +1491,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                 if (Array.isArray((data as any).usedTools)) {
                   (all[lastIdx] as any).usedTools = (data as any).usedTools;
                 }
-                if ((data as any).menus) (all[lastIdx] as any).menus = (data as any).menus;
-                if ((data as any).mastSearches) (all[lastIdx] as any).mastSearches = (data as any).mastSearches;
                 if ((data as any).fileAnnotations) (all[lastIdx] as any).fileAnnotations = (data as any).fileAnnotations;
                 if ((data as any).agentReasoning) (all[lastIdx] as any).agentReasoning = (data as any).agentReasoning;
                 if ((data as any).agentFlowExecutedData) (all[lastIdx] as any).agentFlowExecutedData = (data as any).agentFlowExecutedData;
@@ -1680,8 +1511,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
             message: text,
             id: data?.chatMessageId,
             usedTools: data?.usedTools,
-            menus: data?.menus,
-            mastSearches: data?.mastSearches,
             fileAnnotations: data?.fileAnnotations,
             agentReasoning: data?.agentReasoning,
             agentFlowExecutedData: data?.agentFlowExecutedData,
@@ -1705,8 +1534,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
               if (newMessage.id) target.id = newMessage.id;
               if ((newMessage as any).messageId) (target as any).messageId = (newMessage as any).messageId;
               if (Array.isArray(newMessage.usedTools)) target.usedTools = newMessage.usedTools;
-              if ((newMessage as any).menus) target.menus = (newMessage as any).menus;
-              if ((newMessage as any).mastSearches) target.mastSearches = (newMessage as any).mastSearches;
               if ((newMessage as any).fileAnnotations) target.fileAnnotations = (newMessage as any).fileAnnotations;
               if ((newMessage as any).agentReasoning) target.agentReasoning = (newMessage as any).agentReasoning;
               if ((newMessage as any).agentFlowExecutedData) target.agentFlowExecutedData = (newMessage as any).agentFlowExecutedData;
@@ -1838,7 +1665,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           const lastIdx = all.length - 1;
           if (all[lastIdx].type === 'apiMessage') {
             const prefix = all[lastIdx].message && all[lastIdx].message.length > 0 ? '\n\n' : '';
-            all[lastIdx].message = `${all[lastIdx].message ?? ''}${prefix}${elem?.label ?? '건너뛰기'} ✔️\n\n`;
+            all[lastIdx].message = `${all[lastIdx].message ?? ''}${prefix}${elem?.label ?? (props.resources?.labels?.skip || '건너뛰기')} ✔️\n\n`;
           }
         }
         addChatMessage(all);
@@ -1955,9 +1782,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                 rating: message.rating,
                 dateTime: message.dateTime,
               };
-              if (message.menus) chatHistory.menus = message.menus;
               if (message.thoughts) chatHistory.thoughts = message.thoughts;
-              if (message.mastSearches) chatHistory.mastSearches = message.mastSearches;
               if (message.sourceDocuments) chatHistory.sourceDocuments = message.sourceDocuments;
               if (message.fileAnnotations) chatHistory.fileAnnotations = message.fileAnnotations;
               if (message.fileUploads) chatHistory.fileUploads = message.fileUploads;
@@ -2098,12 +1923,9 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
     const lastMessage = messages()[messages().length - 1];
     if (lastMessage && lastMessage.type === 'apiMessage' && lastMessage.pendingAction) {
-      if (props.openBot && props.observersConfig?.disableButton) {
-        props.openBot();
-        props.observersConfig.disableButton();
-
-        updateLastMessageAction(lastMessage.pendingAction);
-      }
+      if (props.openBot) props.openBot();
+      if (props.observersConfig?.disableButton) props.observersConfig.disableButton();
+      updateLastMessageAction(lastMessage.pendingAction);
     } else {
       if (props.observersConfig?.enableButton) props.observersConfig.enableButton();
     }
@@ -2669,9 +2491,9 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                           }}
                           dateTimeToggle={props.dateTimeToggle}
                           renderHTML={props.renderHTML}
+                          callJS={botProps.observersConfig?.callJS}
+                          resolveLink={botProps.observersConfig?.resolveLink}
                           observeSourceClick={botProps.observersConfig?.observeSourceClick}
-                          observeMenuClick={botProps.observersConfig?.observeMenuClick}
-                          observeMastClick={botProps.observersConfig?.observeMastClick}
                           observeMDTableClick={botProps.observersConfig?.observeMDTableClick}
                           langCode={(botProps.chatflowConfig?.vars as any).langCode}
                           showUserAvartar={props.userMessage?.showAvatar}
@@ -2703,6 +2525,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                           avatarSrc={props.botMessage?.avatarSrc}
                           isAppending={false}
                           renderSummaryText={props.observersConfig?.renderSummaryText}
+                          loadingLabels={props.resources?.labels?.loading}
                         />
                       )}
                       {message.type === 'apiMessage' && index() === messages().length - 1 && showLoadingBubble() && (
@@ -2715,6 +2538,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                           fetchPropName={props.observersConfig?.fetchPropName}
                           fetchAreaTypeName={props.observersConfig?.fetchAreaTypeName}
                           renderSummaryText={props.observersConfig?.renderSummaryText}
+                          loadingLabels={props.resources?.labels?.loading}
                         />
                       )}
                     </>

@@ -98,6 +98,7 @@ export const Full = (props: FullProps, { element }: { element: HTMLElement }) =>
             showCloseButton={props.theme?.chatWindow?.showCloseButton}
             useObserverClose={props.theme?.chatWindow?.useObserverClose}
             closeButtonColor={props.theme?.chatWindow?.closeButtonColor}
+            resources={props.resources}
           />
         </div>
       </Show>

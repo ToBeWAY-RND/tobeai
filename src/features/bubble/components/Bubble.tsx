@@ -13,7 +13,7 @@ const defaultIconColor = 'white';
 export type BubbleProps = BotProps & BubbleParams;
 
 export const Bubble = (props: BubbleProps) => {
-  const [bubbleProps] = splitProps(props, ['theme']);
+  const [bubbleProps] = splitProps(props, ['theme', 'resources']);
 
   const [isBotOpened, setIsBotOpened] = createSignal(false);
   const [isBotStarted, setIsBotStarted] = createSignal(false);
@@ -247,6 +247,7 @@ export const Bubble = (props: BubbleProps) => {
               closeButtonColor={bubbleProps.theme?.chatWindow?.closeButtonColor}
               fastMode={bubbleProps.theme?.chatWindow?.fastMode}
               disableButton={disableButton}
+              resources={bubbleProps.resources}
             />
           </div>
         </Show>

@@ -212,7 +212,12 @@
           welcomeMessage: '안녕하세요. 어떻게 도와드릴까요?',
           clearChatOnReload: false,
           starterPrompts:
-            chatType === 'SEARCH'      ? ['속성으로 키워드 검색을 하고 싶어요', '유사 검색을 하고 싶어요'] :
+            chatType === 'SEARCH'      ? [
+              '한국 법인 고객 검색해줘',
+              '대표자명에 홍길동이 들어간 고객',
+              '최근 변경된 기준정보 보여줘',
+              '투비웨이 유사 검색',
+            ] :
             chatType === 'AGENTSEARCH' ? ['한국에 계좌정보가 있고 대표명이 홍길동인 법인 고객'] :
                                          ['기준정보의 검색 방법에 대해 알려주세요.'],
           backgroundColor: '#ffffff',

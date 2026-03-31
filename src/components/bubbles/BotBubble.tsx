@@ -45,6 +45,16 @@ type Props = {
   observeMDTableClick?: (mdtableid: any) => void;
   langCode?: string;
   showUserAvartar?: boolean;
+  // i18n: 호스트 페이지에서 전달하는 UI 라벨
+  resourceLabels?: {
+    copyToClipboard?: string;
+    thumbsUp?: string;
+    thumbsDown?: string;
+    copied?: string;
+    writeFeedback?: string;
+    feedbackPlaceholder?: string;
+    sendFeedback?: string;
+  };
 };
 
 const defaultBackgroundColor = '#f7f8ff';
@@ -717,20 +727,21 @@ export const BotBubble = (props: Props) => {
         {props.chatFeedbackStatus && props.message.messageId && (
           <>
             <div class={`flex items-center px-2 pb-2 ${props.showAvatar ? 'ml-10' : ''}`}>
-              <CopyToClipboardButton feedbackColor={props.feedbackColor} onClick={() => copyMessageToClipboard()} />
+              <CopyToClipboardButton feedbackColor={props.feedbackColor} label={props.resourceLabels?.copyToClipboard} onClick={() => copyMessageToClipboard()} />
               <Show when={copiedMessage()}>
                 <div class="copied-message" style={{ 'margin-right': '6px', 'font-size': '12px', 'color': props.feedbackColor ?? defaultFeedbackColor }}>
-                  Copied!
+                  {props.resourceLabels?.copied ?? "Copied!"}
                 </div>
               </Show>
               {rating() === '' || rating() === 'THUMBS_UP' ? (
-                <ThumbsUpButton feedbackColor={thumbsUpColor()} isDisabled={rating() === 'THUMBS_UP'} rating={rating()} onClick={onThumbsUpClick} />
+                <ThumbsUpButton feedbackColor={thumbsUpColor()} isDisabled={rating() === 'THUMBS_UP'} rating={rating()} label={props.resourceLabels?.thumbsUp} onClick={onThumbsUpClick} />
               ) : null}
               {rating() === '' || rating() === 'THUMBS_DOWN' ? (
                 <ThumbsDownButton
                   feedbackColor={thumbsDownColor()}
                   isDisabled={rating() === 'THUMBS_DOWN'}
                   rating={rating()}
+                  label={props.resourceLabels?.thumbsDown}
                   onClick={onThumbsDownClick}
                 />
               ) : null}
@@ -747,6 +758,9 @@ export const BotBubble = (props: Props) => {
                 onSubmit={submitFeedbackContent}
                 backgroundColor={props.backgroundColor}
                 textColor={props.textColor}
+                titleLabel={props.resourceLabels?.writeFeedback}
+                placeholderLabel={props.resourceLabels?.feedbackPlaceholder}
+                submitLabel={props.resourceLabels?.sendFeedback}
               />
             </Show>
           </>

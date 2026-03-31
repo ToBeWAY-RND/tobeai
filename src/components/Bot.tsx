@@ -171,7 +171,7 @@ export type observersConfigType = {
   enableButton?: () => void;
   alertAgentError?: () => void;
   applyExtraVars?: () => Promise<Record<string, string>> | Record<string, string>;
-  renderSummaryText?: (calledTools: any[]) => string[] | undefined;
+  renderSummaryText?: (grouped: Map<string, any[]>) => string[] | undefined;
   /** Generic JS action dispatcher — handles link clicks, value list fetches, form submits, search, fill_input, etc. */
   callJS?: (action: string, params: any) => Promise<any>;
   /** Synchronous link resolver. Called for each non-http link in bot messages. */
@@ -181,8 +181,6 @@ export type observersConfigType = {
   applyInputField?: (data: any) => any;
   observeSourceClick?: observerConfigType;
   observeMDTableClick?: observerConfigType;
-  fetchPropName?: (propId: string) => Promise<string> | string;
-  fetchAreaTypeName?: (areaType: string) => Promise<string>;
   getValuePatterns?: (data: any) => any;
   clearFields?: (data: any) => any;
   clearAllFields?: (data: any) => any;
@@ -196,7 +194,24 @@ export type ResourceLabels = {
   nullValue?: string;
   chooseOne?: Record<string, string>;
   categoryLabels?: Record<string, string>;
-  loading?: Record<string, string>;
+  // 일반 UI 라벨 (호스트 페이지에서 전달)
+  copyToClipboard?: string;
+  thumbsUp?: string;
+  thumbsDown?: string;
+  writeFeedback?: string;
+  feedbackPlaceholder?: string;
+  sendFeedback?: string;
+  selectPlaceholder?: string;
+  send?: string;
+  resetChat?: string;
+  copied?: string;
+  yourFeedback?: string;
+  feedbackFormPlaceholder?: string;
+  cancel?: string;
+  submit?: string;
+  moduleLabel?: string;
+  clear?: string;
+  removeAttachment?: string;
 };
 
 export type BotResources = {
@@ -275,17 +290,22 @@ const FeedbackDialog = (props: {
   onSubmit: () => void;
   feedbackValue: string;
   setFeedbackValue: (value: string) => void;
+  // i18n 라벨
+  titleLabel?: string;
+  placeholderLabel?: string;
+  cancelLabel?: string;
+  submitLabel?: string;
 }) => {
   return (
     <Show when={props.isOpen}>
       <div class="fixed inset-0 rounded-lg flex items-center justify-center backdrop-blur-sm z-50" style={{ background: 'rgba(0, 0, 0, 0.4)' }}>
         <div class="p-6 rounded-lg shadow-lg max-w-md w-full text-center mx-4 font-sans" style={{ background: 'white', color: 'black' }}>
-          <h2 class="text-xl font-semibold mb-4 flex justify-center items-center">Your Feedback</h2>
+          <h2 class="text-xl font-semibold mb-4 flex justify-center items-center">{props.titleLabel ?? "Your Feedback"}</h2>
 
           <textarea
             class="w-full p-2 border border-gray-300 rounded-md mb-4"
             rows={4}
-            placeholder="Please provide your feedback..."
+            placeholder={props.placeholderLabel ?? "Please provide your feedback..."}
             value={props.feedbackValue}
             onInput={(e) => props.setFeedbackValue(e.target.value)}
           />
@@ -296,14 +316,14 @@ const FeedbackDialog = (props: {
               style={{ background: '#ef4444', color: 'white' }}
               onClick={props.onClose}
             >
-              Cancel
+              {props.cancelLabel ?? "Cancel"}
             </button>
             <button
               class="font-bold py-2 px-6 rounded focus:outline-none focus:shadow-outline"
               style={{ background: '#3b82f6', color: 'white' }}
               onClick={props.onSubmit}
             >
-              Submit
+              {props.submitLabel ?? "Submit"}
             </button>
           </div>
         </div>
@@ -833,8 +853,39 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     return result;
   }
 
-  const updateLastMessageAction = (action: IAction | string) => {
+  // 복수 인터럽트를 순차 처리하고 결과를 {interruptIds, values} 매핑으로 resume
+  const handleBatchActions = async (actions: any[], interruptIds?: string[]) => {
+    if (!actions || actions.length === 0) return;
+    if (!props.observersConfig?.callJS) {
+      // callJS 없으면 첫 번째만 단건 처리
+      updateLastMessageAction(actions[0], interruptIds?.[0]);
+      return;
+    }
+
+    setLoading(true);
+    const results: any[] = [];
+    for (const action of actions) {
+      const actionName = action?.action;
+      const data = action?.data || {};
+      let result: any = { ok: true, data: {} };
+      try {
+        result = await props.observersConfig.callJS(actionName, data);
+      } catch (e) {
+        console.error('callJS batch error:', actionName, e);
+        result = { ok: false, error: String(e) };
+      }
+      results.push(result);
+    }
+    // interrupt ID 매핑으로 resume → Command(resume={id: value, ...})
+    const humanInput = interruptIds
+      ? { interruptIds, values: results }
+      : results;
+    await handleSubmit('', null, humanInput, true);
+  };
+
+  const updateLastMessageAction = (action: IAction | string, interruptId?: string) => {
     const parsedAction: IAction = typeof action === 'string' ? JSON.parse(action as any) : action;
+    if (interruptId) (parsedAction as any)._interruptId = interruptId;
     if (parsedAction?.action === 'choose_one_option') {
 		setShowLoadingBubble(false);
       const data: any = parsedAction.data || {};
@@ -1186,7 +1237,11 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
             updateAgentFlowExecutedData(payload.data);
             break;
           case 'action':
-            updateLastMessageAction(payload.data);
+            updateLastMessageAction(payload.data, payload.interruptId);
+            break;
+          case 'actions':
+            // 복수 인터럽트: 순차 처리 후 {interruptIds, values} 매핑으로 resume
+            await handleBatchActions(payload.data, payload.interruptIds);
             break;
           case 'artifacts':
             updateLastMessageArtifacts(payload.data);
@@ -1429,7 +1484,15 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
     if (leadEmail()) body.leadEmail = leadEmail();
 
-    if (humanInput) body.humanInput = humanInput;
+    if (humanInput) {
+      // interrupt ID가 action에 존재하고 humanInput에 아직 없으면 자동 래핑
+      const iid = (action as any)?._interruptId;
+      if (iid && !humanInput.interruptId && !humanInput.interruptIds) {
+        body.humanInput = { interruptId: iid, value: humanInput };
+      } else {
+        body.humanInput = humanInput;
+      }
+    }
 
     if (action) {
       body.action = action;
@@ -1448,12 +1511,12 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           return [...updated];
         });
 
-        body.humanInput = {
+        const rawHI: any = {
           status: "human_input_detected",
-          data: {
-            humanInput: value,
-          },
+          data: { humanInput: value },
         };
+        const pendingIid = (lastMessage.action as any)?._interruptId;
+        body.humanInput = pendingIid ? { interruptId: pendingIid, value: rawHI } : rawHI;
       }
     }
 
@@ -2389,7 +2452,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                     options={props.mdmModules?.values || []}
                     label={props.mdmModules?.label}
                     defaultValue={props.mdmModules?.defaultValue}
-                    placeholder="Module"
+                    placeholder={props.resources?.labels?.moduleLabel ?? "Module"}
                     onChange={(value: string) => {
                       // 선택된 MDM 모듈 값을 chatflowConfig에 저장
                       if (botProps.chatflowConfig?.vars) {
@@ -2408,7 +2471,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                 showCloseButton={!props.isFullPage && props.showCloseButton}
                 on:click={clearChat}
               >
-                <span style={{ 'font-family': 'Poppins, sans-serif' }}>Clear</span>
+                <span style={{ 'font-family': 'Poppins, sans-serif' }}>{props.resources?.labels?.clear ?? "Clear"}</span>
               </DeleteButton>
               <Show when={props.showCloseButton && (botProps.observersConfig?.observeCloseClick || props.closeBot)}>
                 <CloseButton
@@ -2497,6 +2560,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                           observeMDTableClick={botProps.observersConfig?.observeMDTableClick}
                           langCode={(botProps.chatflowConfig?.vars as any).langCode}
                           showUserAvartar={props.userMessage?.showAvatar}
+                          resourceLabels={props.resources?.labels}
                         />
                       )}
                       {message.type === 'leadCaptureMessage' && leadsConfig()?.status && !getLocalStorageChatflow(props.chatflowid)?.lead && (
@@ -2525,7 +2589,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                           avatarSrc={props.botMessage?.avatarSrc}
                           isAppending={false}
                           renderSummaryText={props.observersConfig?.renderSummaryText}
-                          loadingLabels={props.resources?.labels?.loading}
                         />
                       )}
                       {message.type === 'apiMessage' && index() === messages().length - 1 && showLoadingBubble() && (
@@ -2535,10 +2598,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                           avatarLoadingSrc={props.botMessage?.avatarLoadingSrc}
                           avatarSrc={props.botMessage?.avatarSrc}
                           isAppending={message.message.trim() !== ''}
-                          fetchPropName={props.observersConfig?.fetchPropName}
-                          fetchAreaTypeName={props.observersConfig?.fetchAreaTypeName}
                           renderSummaryText={props.observersConfig?.renderSummaryText}
-                          loadingLabels={props.resources?.labels?.loading}
                         />
                       )}
                     </>
@@ -2719,6 +2779,10 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           onSubmit={handleSubmitFeedback}
           feedbackValue={feedback()}
           setFeedbackValue={(value) => setFeedback(value)}
+          titleLabel={props.resources?.labels?.yourFeedback}
+          placeholderLabel={props.resources?.labels?.feedbackFormPlaceholder}
+          cancelLabel={props.resources?.labels?.cancel}
+          submitLabel={props.resources?.labels?.submit}
         />
       )}
     </>

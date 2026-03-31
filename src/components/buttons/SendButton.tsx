@@ -10,6 +10,7 @@ type SendButtonProps = {
   width?: string;
   showCloseButton?: boolean;
   sendButtonSrc?: string;
+  label?: string;  // i18n: 호스트 페이지에서 전달하는 버튼 라벨/제목
 } & JSX.ButtonHTMLAttributes<HTMLButtonElement>;
 
 export const SendButton = (props: SendButtonProps) => {
@@ -29,7 +30,7 @@ export const SendButton = (props: SendButtonProps) => {
         <Show when={!!props.sendButtonSrc} fallback={<SendIcon color={props.sendButtonColor} width={props.width} class={'send-icon flex ' + (props.disableIcon ? 'hidden' : '')} />}>
           <img
             src={props.sendButtonSrc}
-            alt="Send"
+            alt={props.label ?? "Send"}
             width={iconWidth}
             height={iconWidth}
             class={'send-icon flex ' + (props.disableIcon ? 'hidden' : '')}
@@ -52,7 +53,7 @@ export const DeleteButton = (props: SendButtonProps) => {
         props.class
       }
       style={{ background: 'transparent', border: 'none' }}
-      title="Reset Chat"
+      title={props.label ?? "Reset Chat"}
     >
       <Show when={!props.isLoading} fallback={<Spinner class="text-white" />}>
         <svg viewBox="0 0 24 24" width="24" height="24">

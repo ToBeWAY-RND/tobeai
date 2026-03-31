@@ -5,6 +5,7 @@ type CardWithDeleteOverlayProps = {
   item: { name: string };
   disabled?: boolean;
   onDelete: (item: { name: string }) => void;
+  removeLabel?: string;  // i18n: "Remove attachment"
 };
 
 export const FilePreview = (props: CardWithDeleteOverlayProps) => {
@@ -36,7 +37,7 @@ export const FilePreview = (props: CardWithDeleteOverlayProps) => {
           disabled={props.disabled}
           onClick={() => props.onDelete(props.item)}
           class="absolute top-0 left-0 right-0 bottom-0 bg-transparent hover:bg-transparent flex items-center justify-center"
-          title="Remove attachment"
+          title={props.removeLabel ?? "Remove attachment"}
         >
           <TrashIcon color="white" />
         </button>

@@ -4,6 +4,7 @@ import { JSX } from 'solid-js/jsx-runtime';
 type ShortTextInputProps = {
   ref: HTMLInputElement | HTMLTextAreaElement | undefined;
   onInput: (value: string) => void;
+  onPasteFiles?: (files: File[]) => void;
   fontSize?: number;
   disabled?: boolean;
   isFullPage?: boolean;
@@ -13,7 +14,7 @@ const FULL_DEFAULT_HEIGHT = 56;
 const BUBBLE_DEFAULT_HEIGHT = 50;
 
 export const ShortTextInput = (props: ShortTextInputProps) => {
-  const [local, others] = splitProps(props, ['ref', 'onInput']);
+  const [local, others] = splitProps(props, ['ref', 'onInput', 'onPasteFiles']);
   const [height, setHeight] = createSignal(props.isFullPage ? FULL_DEFAULT_HEIGHT : BUBBLE_DEFAULT_HEIGHT);
   let textareaRef: HTMLTextAreaElement | undefined;
 
@@ -117,6 +118,14 @@ export const ShortTextInput = (props: ShortTextInputProps) => {
       }}
       onInput={handleInput}
       onKeyDown={handleKeyDown}
+      onPaste={(e) => {
+        const files = Array.from(e.clipboardData?.files || []);
+        const imageFiles = files.filter((f) => f.type.startsWith('image/'));
+        if (imageFiles.length > 0) {
+          e.preventDefault();
+          local.onPasteFiles?.(imageFiles);
+        }
+      }}
       {...others}
     />
   );

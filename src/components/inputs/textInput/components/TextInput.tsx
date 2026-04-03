@@ -24,6 +24,7 @@ type TextInputProps = {
   setPreviews: Setter<unknown[]>;
   onMicrophoneClicked: () => void;
   handleFileChange: (event: FileEvent<HTMLInputElement>) => void;
+  onPaste?: (files: File[]) => void;
   maxChars?: number;
   maxCharsWarningMessage?: string;
   autoFocus?: boolean;
@@ -188,6 +189,7 @@ export const TextInput = (props: TextInputProps) => {
         <ShortTextInput
           ref={inputRef as HTMLTextAreaElement}
           onInput={handleInput}
+          onPasteFiles={props.onPaste}
           value={props.inputValue}
           fontSize={props.fontSize}
           disabled={props.disabled}

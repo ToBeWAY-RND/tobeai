@@ -2163,6 +2163,37 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     setPreviews((prevPreviews) => [...prevPreviews, ...(newFiles as FilePreview[])]);
   };
 
+  // 클립보드 붙여넣기로 이미지 첨부
+  const handlePaste = async (files: File[]) => {
+    if (!files.length) return;
+    const filesList: Promise<any>[] = [];
+    const newUploadedFiles: { file: File; type: string }[] = [];
+    for (const file of files) {
+      if (isFileAllowedForUpload(file) === false) continue;
+      newUploadedFiles.push({ file, type: fullFileUpload() ? 'file:full' : 'file:rag' });
+      const name = file.name || `pasted_image_${Date.now()}.png`;
+      filesList.push(
+        new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            if (!evt?.target?.result) return;
+            resolve({
+              data: evt.target.result,
+              preview: URL.createObjectURL(file),
+              type: 'file',
+              name: name,
+              mime: file.type,
+            });
+          };
+          reader.readAsDataURL(file);
+        }),
+      );
+    }
+    const newFiles = await Promise.all(filesList);
+    setUploadedFiles((prev) => [...prev, ...newUploadedFiles]);
+    setPreviews((prev) => [...prev, ...(newFiles as FilePreview[])]);
+  };
+
   const isFileUploadAllowed = () => {
     if (fullFileUpload()) {
       return true;
@@ -2741,6 +2772,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                   setPreviews={setPreviews}
                   onMicrophoneClicked={onMicrophoneClicked}
                   handleFileChange={handleFileChange}
+                  onPaste={handlePaste}
                   sendMessageSound={props.textInput?.sendMessageSound}
                   sendSoundLocation={props.textInput?.sendSoundLocation}
                   enableInputHistory={true}

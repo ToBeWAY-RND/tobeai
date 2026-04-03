@@ -131,13 +131,20 @@ export const TextInput = (props: TextInputProps) => {
   };
 
   const getFileType = () => {
+    // fullFileUpload이 활성화된 경우 허용 타입에 이미 이미지 포함
     if (props.isFullFileUpload) return props.fullFileUploadAllowedTypes === '' ? '*' : props.fullFileUploadAllowedTypes;
-    if (props.uploadsConfig?.fileUploadSizeAndTypes?.length) {
-      const allowedFileTypes = props.uploadsConfig?.fileUploadSizeAndTypes.map((allowed) => allowed.fileTypes).join(',');
-      if (allowedFileTypes.includes('*')) return '*';
-      else return allowedFileTypes;
+
+    const types: string[] = [];
+    // 이미지 허용 타입 수집
+    if (props.uploadsConfig?.isImageUploadAllowed && props.uploadsConfig?.imgUploadSizeAndTypes?.length) {
+      types.push(...props.uploadsConfig.imgUploadSizeAndTypes.map((allowed) => allowed.fileTypes).flat());
     }
-    return '*';
+    // RAG 파일 허용 타입 수집
+    if (props.uploadsConfig?.isRAGFileUploadAllowed && props.uploadsConfig?.fileUploadSizeAndTypes?.length) {
+      types.push(...props.uploadsConfig.fileUploadSizeAndTypes.map((allowed) => allowed.fileTypes).flat());
+    }
+    if (types.length === 0 || types.includes('*')) return '*';
+    return types.join(',');
   };
 
   return (
@@ -157,32 +164,7 @@ export const TextInput = (props: TextInputProps) => {
         </div>
       </Show>
       <div class="w-full flex justify-between items-end">
-        {props.uploadsConfig?.isImageUploadAllowed ? (
-          <>
-            <ImageUploadButton
-              buttonColor={props.sendButtonColor}
-              type="button"
-              class={`m-0 ${props.isFullPage ? 'h-14' : 'h-[50px]'} flex items-center justify-center`}
-              isDisabled={props.disabled || isSendButtonDisabled()}
-              on:click={handleImageUploadClick}
-            >
-              <span style={{ 'font-family': 'Poppins, sans-serif' }}>Image Upload</span>
-            </ImageUploadButton>
-            <input
-              style={{ display: 'none' }}
-              multiple
-              ref={imgUploadRef as HTMLInputElement}
-              type="file"
-              onChange={handleFileChange}
-              accept={
-                props.uploadsConfig?.imgUploadSizeAndTypes?.length
-                  ? props.uploadsConfig?.imgUploadSizeAndTypes.map((allowed) => allowed.fileTypes).join(',')
-                  : '*'
-              }
-            />
-          </>
-        ) : null}
-        {props.uploadsConfig?.isRAGFileUploadAllowed || props.isFullFileUpload ? (
+        {(props.uploadsConfig?.isImageUploadAllowed || props.uploadsConfig?.isRAGFileUploadAllowed || props.isFullFileUpload) ? (
           <>
             <AttachmentUploadButton
               buttonColor={props.sendButtonColor}

@@ -21,7 +21,8 @@ export const SendButton = (props: SendButtonProps) => {
       disabled={props.isDisabled || props.isLoading}
       {...props}
       class={
-        'py-2 justify-center font-semibold text-white focus:outline-none flex items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-100 transition-all filter hover:brightness-90 active:brightness-75 chatbot-button ' +
+        'py-2 justify-center font-semibold text-white focus:outline-none flex items-center disabled:cursor-not-allowed transition-all filter chatbot-button ' +
+        (props.sendButtonSrc ? '' : 'disabled:opacity-50 disabled:brightness-100 hover:brightness-90 active:brightness-75 ') +
         props.class
       }
       style={{ background: 'transparent', border: 'none' }}

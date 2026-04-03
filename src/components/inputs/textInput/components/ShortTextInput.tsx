@@ -106,12 +106,14 @@ export const ShortTextInput = (props: ShortTextInputProps) => {
           };
         }
       }}
-      class={`focus:outline-none bg-transparent px-4 ${props.isFullPage ? 'py-4 min-h-[56px] max-h-[128px]' : 'py-3 min-h-[50px] max-h-[128px]'} flex-1 w-full text-input disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-100 `}
+      class={`focus:outline-none bg-transparent ${props.isFullPage ? 'px-4' : 'px-2'} ${
+        props.isFullPage ? 'py-4 min-h-[56px] max-h-[128px]' : 'py-3 min-h-[50px] max-h-[128px]'
+      } flex-1 w-full text-input disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-100 `}
       disabled={props.disabled}
       style={{
         'font-size': props.fontSize ? `${props.fontSize}px` : '16px',
         resize: 'none',
-        height: `${props.value !== '' ? height() : (props.isFullPage ? FULL_DEFAULT_HEIGHT : BUBBLE_DEFAULT_HEIGHT)}px`,
+        height: `${props.value !== '' ? height() : props.isFullPage ? FULL_DEFAULT_HEIGHT : BUBBLE_DEFAULT_HEIGHT}px`,
       }}
       onInput={handleInput}
       onKeyDown={handleKeyDown}

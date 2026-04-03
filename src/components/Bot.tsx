@@ -104,7 +104,7 @@ export type IAction = {
   allowInput?: boolean;
 };
 
-export type FileUpload = Omit<FilePreview, 'preview'>;
+export type FileUpload = Omit<FilePreview, 'preview' | 'data'> & { data?: FilePreviewData };
 
 export type AgentFlowExecutedData = {
   nodeLabel: string;
@@ -144,6 +144,7 @@ type IUploads = {
   type: string;
   name: string;
   mime: string;
+  fileId?: string;
 }[];
 
 type observerConfigType = (accessor: any) => void;
@@ -189,29 +190,32 @@ export type observersConfigType = {
 };
 
 export type ResourceLabels = {
-  skip?: string;
-  chooseDefault?: string;
-  nullValue?: string;
-  chooseOne?: Record<string, string>;
-  categoryLabels?: Record<string, string>;
-  // 일반 UI 라벨 (호스트 페이지에서 전달)
-  copyToClipboard?: string;
-  thumbsUp?: string;
-  thumbsDown?: string;
-  writeFeedback?: string;
-  feedbackPlaceholder?: string;
-  sendFeedback?: string;
-  selectPlaceholder?: string;
-  send?: string;
-  resetChat?: string;
-  copied?: string;
-  yourFeedback?: string;
-  feedbackFormPlaceholder?: string;
-  cancel?: string;
-  submit?: string;
-  moduleLabel?: string;
-  clear?: string;
-  removeAttachment?: string;
+  SKIP?: string;
+  CHOOSE_DEFAULT?: string;
+  NULL_VALUE?: string;
+  CHOOSE_ONE?: Record<string, string>;
+  CATEGORY_LABELS?: Record<string, string>;
+  // 일반 UI 라벨 — ChatbotLabelUtil 키와 일치 (SCREAMING_SNAKE_CASE)
+  COPY_TO_CLIPBOARD?: string;
+  THUMBS_UP?: string;
+  THUMBS_DOWN?: string;
+  WRITE_FEEDBACK?: string;
+  FEEDBACK_PLACEHOLDER?: string;
+  SEND_FEEDBACK?: string;
+  SELECT_PLACEHOLDER?: string;
+  SEND?: string;
+  RESET_CHAT?: string;
+  COPIED?: string;
+  YOUR_FEEDBACK?: string;
+  FEEDBACK_FORM_PLACEHOLDER?: string;
+  CANCEL?: string;
+  SUBMIT?: string;
+  MODULE_PLACEHOLDER?: string;
+  CLEAR?: string;
+  REMOVE_ATTACHMENT?: string;
+  FILE_SIZE_EXCEEDED?: string;
+  INVALID_FILE_TYPE?: string;
+  DROP_HERE_TO_UPLOAD?: string;
 };
 
 export type BotResources = {
@@ -542,6 +546,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
   const [isDragActive, setIsDragActive] = createSignal(false);
   const [uploadedFiles, setUploadedFiles] = createSignal<{ file: File; type: string }[]>([]);
   const [fullFileUploadAllowedTypes, setFullFileUploadAllowedTypes] = createSignal('*');
+  const [fullFileUploadMaxSize, setFullFileUploadMaxSize] = createSignal<number>(0); // MB, 0 = no limit
 
   createMemo(() => {
     const customerId = (props.chatflowConfig?.vars as any)?.customerId;
@@ -898,39 +903,27 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
       let prompt: string;
 
-      const defaultPrompts: Record<string, string> = {
-        PROP: "Select the property for '%s'",
-        VALUE: "Select the value for '%s'",
-        UNIT: "Select the unit for '%s'",
-        AREATYPE: "Select the area type for '%s'",
-        AREA: "Select the area for '%s'",
-        CLASS: "Select the class for '%s'",
-        CATEGORY: "Select the category for '%s'",
-        CORP: "Select the company",
-      };
-      const chooseOneLabels = props.resources?.labels?.chooseOne;
-      const prompts: Record<string, string> = chooseOneLabels
-        ? { ...defaultPrompts, ...chooseOneLabels }
-        : defaultPrompts;
+      const prompts: Record<string, string> = props.resources?.labels?.CHOOSE_ONE ?? {};
       type PromptKey = keyof typeof prompts;
 
+      const chooseDefault = props.resources?.labels?.CHOOSE_DEFAULT || 'Please select an option';
       const promptType = data?.prompt_type as PromptKey;
       const promptArgs: Array<string> = data?.prompt_args || [];
 
-      if (promptType && promptArgs && promptArgs.length > 0) {
+      if (promptType && prompts[promptType] && promptArgs && promptArgs.length > 0) {
         prompt = sprintf(prompts[promptType], ...promptArgs);
-      } else if (promptType) {
+      } else if (promptType && prompts[promptType]) {
         prompt = prompts[promptType];
       } else {
-        prompt = props.resources?.labels?.chooseDefault || 'Please select an option';
+        prompt = chooseDefault;
       }
 
       let options: any[];
 
       if (promptType === 'CATEGORY') {
         const defaultCategoryLabels: Record<string, string> = { CLASS: 'Class', PROPERTY: 'Property', AREA: 'Area' };
-        const categoryLabels = props.resources?.labels?.categoryLabels
-          ? { ...defaultCategoryLabels, ...props.resources.labels.categoryLabels }
+        const categoryLabels = props.resources?.labels?.CATEGORY_LABELS
+          ? { ...defaultCategoryLabels, ...props.resources.labels.CATEGORY_LABELS }
           : defaultCategoryLabels;
         const categories: Array<string> = data?.options || [];
         options = categories
@@ -948,7 +941,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
       if (addNull) {
         // Null 버튼 추가
-        options.push({ type: '__NULL__', label: props.resources?.labels?.nullValue || 'No value' });
+        options.push({ type: '__NULL__', label: props.resources?.labels?.NULL_VALUE || 'No value' });
       }
 
       const concat_options = options
@@ -984,7 +977,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         });
 
         // Add skip button
-        options.push({ type: 'skip', label: props.resources?.labels?.skip || 'Skip' });
+        options.push({ type: 'skip', label: props.resources?.labels?.SKIP || 'Skip' });
 
         setMessages((prev) => {
           const all = [...cloneDeep(prev)];
@@ -1356,18 +1349,19 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           throw new Error('Unable to upload documents');
         } else {
           const data = response.data as any;
-          for (const extractedFileData of data) {
-            const content = extractedFileData.content;
-            const fileName = extractedFileData.name;
+          for (const fileResult of data) {
+            const fileName = fileResult.name;
+            const fileId = fileResult.fileId;
+            const thumbnailData = fileResult.data;  // 이미지인 경우에만 base64 data URL
 
-            // find matching name in previews and replace data with content
             const uploadIndex = uploads.findIndex((upload) => upload.name === fileName);
             if (uploadIndex !== -1) {
               uploads[uploadIndex] = {
                 ...uploads[uploadIndex],
-                data: content,
+                data: thumbnailData || uploads[uploadIndex].data,  // 썸네일이 있으면 사용, 없으면 기존 유지
                 name: fileName,
                 type: 'file:full',
+                fileId: fileId,
               };
             }
           }
@@ -1412,11 +1406,8 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
   // Handle form submission
   const handleSubmit = async (value: string | object, action?: IAction | undefined | null, humanInput?: any, noUserMessage?: boolean) => {
-    if (!action && typeof value === 'string' && value.trim() === '') {
-      const containsFile = previews().filter((item) => !item.mime.startsWith('image') && item.type !== 'audio').length > 0;
-      if (!previews().length || (previews().length && containsFile)) {
-        return;
-      }
+    if (!action && typeof value === 'string' && value.trim() === '' && !previews().length) {
+      return;
     }
 
     let formData = {};
@@ -1450,10 +1441,13 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
     }
 
     clearPreviews();
+    setUploadedFiles([]);
 
     if (!noUserMessage) {
       setMessages((prevMessages) => {
-        const messages: MessageType[] = [...prevMessages, { message: value as string, type: 'userMessage', fileUploads: uploads }];
+        // localStorage에는 이미지 썸네일만 data 유지, 나머지는 data 제거
+        const fileUploadsForStorage = uploads.map((u) => u.mime?.startsWith('image/') ? u : { ...u, data: undefined });
+        const messages: MessageType[] = [...prevMessages, { message: value as string, type: 'userMessage', fileUploads: fileUploadsForStorage }];
         addChatMessage(messages);
         return messages;
       });
@@ -1469,7 +1463,10 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       delete body.question;
     }
 
-    if (uploads && uploads.length > 0) body.uploads = uploads;
+    if (uploads && uploads.length > 0) {
+      // prediction 요청에는 data(base64) 제외 — 서버가 fileId로 디스크에서 읽음
+      body.uploads = uploads.map(({ data, ...rest }) => rest);
+    }
 
     if (props.chatflowConfig) body.overrideConfig = props.chatflowConfig;
 
@@ -1728,7 +1725,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           const lastIdx = all.length - 1;
           if (all[lastIdx].type === 'apiMessage') {
             const prefix = all[lastIdx].message && all[lastIdx].message.length > 0 ? '\n\n' : '';
-            all[lastIdx].message = `${all[lastIdx].message ?? ''}${prefix}${elem?.label ?? (props.resources?.labels?.skip || 'Skip')} ✔️\n\n`;
+            all[lastIdx].message = `${all[lastIdx].message ?? ''}${prefix}${elem?.label ?? (props.resources?.labels?.SKIP || 'Skip')} ✔️\n\n`;
           }
         }
         addChatMessage(all);
@@ -1981,6 +1978,9 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         if (chatbotConfig.fullFileUpload?.allowedUploadFileTypes) {
           setFullFileUploadAllowedTypes(chatbotConfig.fullFileUpload?.allowedUploadFileTypes);
         }
+        if (chatbotConfig.fullFileUpload?.maxUploadSize) {
+          setFullFileUploadMaxSize(chatbotConfig.fullFileUpload.maxUploadSize);
+        }
       }
     }
 
@@ -2077,6 +2077,22 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       });
     }
     if (fullFileUpload()) {
+      const sizeInMB = file.size / 1024 / 1024;
+      // 이미지는 imgUploadSizeAndTypes의 제한 적용, 그 외는 fullFileUpload 제한 적용
+      const isImage = file.type.startsWith('image/');
+      let maxSize = fullFileUploadMaxSize();
+      if (isImage && uploadsConfig()?.imgUploadSizeAndTypes?.length) {
+        const imgLimit = uploadsConfig()!.imgUploadSizeAndTypes.find(
+          (allowed) => allowed.fileTypes.includes(file.type)
+        );
+        if (imgLimit) maxSize = imgLimit.maxUploadSize;
+      }
+      if (maxSize > 0 && sizeInMB > maxSize) {
+        const msg = props.resources?.labels?.FILE_SIZE_EXCEEDED
+          ?? `File size ({size}MB) exceeds the maximum allowed size ({max}MB).`;
+        alert(msg.replace('{size}', sizeInMB.toFixed(1)).replace('{max}', String(maxSize)));
+        return false;
+      }
       return true;
     }
     if (uploadsConfig() && uploadsConfig()?.isRAGFileUploadAllowed && uploadsConfig()?.fileUploadSizeAndTypes) {
@@ -2092,7 +2108,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       }
     }
     if (!acceptFile) {
-      alert(`Cannot upload file. Kindly check the allowed file types and maximum allowed size.`);
+      alert(props.resources?.labels?.INVALID_FILE_TYPE ?? `Cannot upload file. Kindly check the allowed file types and maximum allowed size.`);
     }
     return acceptFile;
   };
@@ -2108,15 +2124,17 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       if (isFileAllowedForUpload(file) === false) {
         return;
       }
-      // Only add files
-      if (
+      // fullFileUpload이면 모든 파일(이미지 포함)을 attachments 엔드포인트로 전송
+      if (fullFileUpload()) {
+        uploadedFiles.push({ file, type: 'file:full' });
+      } else if (
         !file.type ||
         !uploadsConfig()
           ?.imgUploadSizeAndTypes.map((allowed) => allowed.fileTypes)
           .join(',')
           .includes(file.type)
       ) {
-        uploadedFiles.push({ file, type: fullFileUpload() ? 'file:full' : 'file:rag' });
+        uploadedFiles.push({ file, type: 'file:rag' });
       }
       const reader = new FileReader();
       const { name } = file;
@@ -2179,15 +2197,17 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
         if (isFileAllowedForUpload(file) === false) {
           return;
         }
-        // Only add files
-        if (
+        // fullFileUpload이면 모든 파일(이미지 포함)을 attachments 엔드포인트로 전송
+        if (fullFileUpload()) {
+          uploadedFiles.push({ file, type: 'file:full' });
+        } else if (
           !file.type ||
           !uploadsConfig()
             ?.imgUploadSizeAndTypes.map((allowed) => allowed.fileTypes)
             .join(',')
             .includes(file.type)
         ) {
-          uploadedFiles.push({ file, type: fullFileUpload() ? 'file:full' : 'file:rag' });
+          uploadedFiles.push({ file, type: 'file:rag' });
         }
         const reader = new FileReader();
         const { name } = file;
@@ -2405,17 +2425,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
               class="absolute top-0 left-0 bottom-0 right-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm text-white z-40 gap-2 border-2 border-dashed"
               style={{ 'border-color': props.bubbleBackgroundColor }}
             >
-              <h2 class="text-xl font-semibold">Drop here to upload</h2>
-              <For each={[...(uploadsConfig()?.imgUploadSizeAndTypes || []), ...(uploadsConfig()?.fileUploadSizeAndTypes || [])]}>
-                {(allowed) => {
-                  return (
-                    <>
-                      <span>{allowed.fileTypes?.join(', ')}</span>
-                      {allowed.maxUploadSize && <span>Max Allowed Size: {allowed.maxUploadSize} MB</span>}
-                    </>
-                  );
-                }}
-              </For>
+              <h2 class="text-xl font-semibold">{props.resources?.labels?.DROP_HERE_TO_UPLOAD ?? 'Drop here to upload'}</h2>
             </div>
           )}
 
@@ -2452,7 +2462,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                     options={props.mdmModules?.values || []}
                     label={props.mdmModules?.label}
                     defaultValue={props.mdmModules?.defaultValue}
-                    placeholder={props.resources?.labels?.moduleLabel ?? "Module"}
+                    placeholder={props.resources?.labels?.MODULE_PLACEHOLDER ?? "Module"}
                     onChange={(value: string) => {
                       // 선택된 MDM 모듈 값을 chatflowConfig에 저장
                       if (botProps.chatflowConfig?.vars) {
@@ -2471,7 +2481,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                 showCloseButton={!props.isFullPage && props.showCloseButton}
                 on:click={clearChat}
               >
-                <span style={{ 'font-family': 'Poppins, sans-serif' }}>{props.resources?.labels?.clear ?? "Clear"}</span>
+                <span style={{ 'font-family': 'Poppins, sans-serif' }}>{props.resources?.labels?.CLEAR ?? "Clear"}</span>
               </DeleteButton>
               <Show when={props.showCloseButton && (botProps.observersConfig?.observeCloseClick || props.closeBot)}>
                 <CloseButton
@@ -2779,10 +2789,10 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
           onSubmit={handleSubmitFeedback}
           feedbackValue={feedback()}
           setFeedbackValue={(value) => setFeedback(value)}
-          titleLabel={props.resources?.labels?.yourFeedback}
-          placeholderLabel={props.resources?.labels?.feedbackFormPlaceholder}
-          cancelLabel={props.resources?.labels?.cancel}
-          submitLabel={props.resources?.labels?.submit}
+          titleLabel={props.resources?.labels?.YOUR_FEEDBACK}
+          placeholderLabel={props.resources?.labels?.FEEDBACK_FORM_PLACEHOLDER}
+          cancelLabel={props.resources?.labels?.CANCEL}
+          submitLabel={props.resources?.labels?.SUBMIT}
         />
       )}
     </>

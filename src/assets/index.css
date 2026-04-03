@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 버튼 클릭 시 브라우저 기본 포커스 테두리 제거 */
+button:focus,
+button:focus-visible,
+button:active {
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
 :host {
   --chatbot-container-bg-image: none;
   --chatbot-container-bg-color: transparent;

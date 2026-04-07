@@ -46,7 +46,7 @@ export const SaveLeadButton = (props: LeadCaptureButtonProps) => {
       {...props}
     >
       <Show when={!props.isLoading} fallback={<SaveLeadFallback />}>
-        <span style={{ 'font-family': 'Poppins, sans-serif' }}>Submit</span>
+        <span style={{ 'font-family': 'TbwBase, arial, sans-serif' }}>Submit</span>
       </Show>
     </SendButton>
   );

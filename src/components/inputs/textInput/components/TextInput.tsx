@@ -13,6 +13,7 @@ type TextInputProps = {
   backgroundColor?: string;
   textColor?: string;
   sendButtonColor?: string;
+  secondaryButtonColor?: string;
   sendButtonSrc?: string;
   inputValue: string;
   fontSize?: number;
@@ -34,6 +35,7 @@ type TextInputProps = {
   enableInputHistory?: boolean;
   maxHistorySize?: number;
   isFullPage?: boolean;
+  inputHeight?: number;
 };
 
 const defaultBackgroundColor = '#ffffff';
@@ -150,12 +152,13 @@ export const TextInput = (props: TextInputProps) => {
 
   return (
     <div
-      class={`w-full h-auto max-h-[192px] ${props.isFullPage ? 'min-h-[56px]' : 'min-h-[50px]'} flex items-center justify-between chatbot-input border border-[#eeeeee]`}
+      class={`w-full h-auto max-h-[192px] ${props.inputHeight ? '' : (props.isFullPage ? 'min-h-[56px]' : 'min-h-[50px]')} flex items-center justify-between chatbot-input border border-[#eeeeee]`}
       data-testid="input"
       style={{
         margin: 'auto',
         'background-color': props.backgroundColor ?? defaultBackgroundColor,
         color: props.textColor ?? defaultTextColor,
+        ...(props.inputHeight ? { 'min-height': `${props.inputHeight}px` } : {}),
       }}
       onKeyDown={handleKeyDown}
     >
@@ -164,17 +167,18 @@ export const TextInput = (props: TextInputProps) => {
           {warningMessage()}
         </div>
       </Show>
-      <div class="w-full flex justify-between items-end">
+      <div class={`w-full flex justify-between ${props.inputHeight ? 'items-center' : 'items-end'}`}>
         {(props.uploadsConfig?.isImageUploadAllowed || props.uploadsConfig?.isRAGFileUploadAllowed || props.isFullFileUpload) ? (
           <>
             <AttachmentUploadButton
-              buttonColor={props.sendButtonColor}
+              buttonColor={props.secondaryButtonColor ?? props.sendButtonColor}
               type="button"
-              class={`m-0 ${props.isFullPage ? 'h-14' : 'h-[50px]'} flex items-center justify-center`}
+              class={`m-0 ${props.inputHeight ? '' : (props.isFullPage ? 'h-14' : 'h-[50px]')} flex items-center justify-center`}
+              style={props.inputHeight ? { height: `${props.inputHeight}px` } : {}}
               isDisabled={props.disabled || isSendButtonDisabled()}
               on:click={handleFileUploadClick}
             >
-              <span style={{ 'font-family': 'Poppins, sans-serif' }}>File Upload</span>
+              <span style={{ 'font-family': 'TbwBase, arial, sans-serif' }}>File Upload</span>
             </AttachmentUploadButton>
             <input
               style={{ display: 'none' }}
@@ -194,18 +198,20 @@ export const TextInput = (props: TextInputProps) => {
           fontSize={props.fontSize}
           disabled={props.disabled}
           isFullPage={props.isFullPage}
+          inputHeight={props.inputHeight}
           placeholder={props.placeholder ?? 'Type your question'}
         />
         {props.uploadsConfig?.isSpeechToTextEnabled ? (
           <RecordAudioButton
-            buttonColor={props.sendButtonColor}
+            buttonColor={props.secondaryButtonColor ?? props.sendButtonColor}
             type="button"
-            class={`m-0 start-recording-button ${props.isFullPage ? 'h-14' : 'h-[50px]'} flex items-center justify-center`}
+            class={`m-0 start-recording-button ${props.inputHeight ? '' : (props.isFullPage ? 'h-14' : 'h-[50px]')} flex items-center justify-center`}
+            style={props.inputHeight ? { height: `${props.inputHeight}px` } : {}}
             isDisabled={props.disabled || isSendButtonDisabled()}
             on:click={props.onMicrophoneClicked}
             isFullPage={props.isFullPage}
           >
-            <span style={{ 'font-family': 'Poppins, sans-serif' }}>Record Audio</span>
+            <span style={{ 'font-family': 'TbwBase, arial, sans-serif' }}>Record Audio</span>
           </RecordAudioButton>
         ) : null}
         <SendButton
@@ -213,11 +219,12 @@ export const TextInput = (props: TextInputProps) => {
           sendButtonSrc={props.sendButtonSrc}
           type="button"
           isDisabled={props.disabled || isSendButtonDisabled()}
-          class={`m-0 ${props.isFullPage ? 'h-14' : 'h-[50px]'} flex items-center justify-center ${(props.uploadsConfig?.isSpeechToTextEnabled) ? (props.isFullPage ? 'pl-3 pr-4' : 'pl-1.5 pr-4') : 'px-4'}`}
+          class={`m-0 ${props.inputHeight ? '' : (props.isFullPage ? 'h-14' : 'h-[50px]')} flex items-center justify-center ${(props.uploadsConfig?.isSpeechToTextEnabled) ? (props.isFullPage ? 'pl-3 pr-4' : 'pl-1.5 pr-4') : 'px-4'}`}
+          style={props.inputHeight ? { height: `${props.inputHeight}px` } : {}}
           width={props.isFullPage ? '24px' : '26px' }
           on:click={submit}
         >
-          <span style={{ 'font-family': 'Poppins, sans-serif' }}>Send</span>
+          <span style={{ 'font-family': 'TbwBase, arial, sans-serif' }}>Send</span>
         </SendButton>
       </div>
     </div>

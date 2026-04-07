@@ -8,6 +8,7 @@ type ShortTextInputProps = {
   fontSize?: number;
   disabled?: boolean;
   isFullPage?: boolean;
+  inputHeight?: number;
 } & Omit<JSX.TextareaHTMLAttributes<HTMLTextAreaElement>, 'onInput'>;
 
 const FULL_DEFAULT_HEIGHT = 56;
@@ -15,18 +16,17 @@ const BUBBLE_DEFAULT_HEIGHT = 50;
 
 export const ShortTextInput = (props: ShortTextInputProps) => {
   const [local, others] = splitProps(props, ['ref', 'onInput', 'onPasteFiles']);
-  const [height, setHeight] = createSignal(props.isFullPage ? FULL_DEFAULT_HEIGHT : BUBBLE_DEFAULT_HEIGHT);
+  const getDefaultHeight = () => props.inputHeight ?? (props.isFullPage ? FULL_DEFAULT_HEIGHT : BUBBLE_DEFAULT_HEIGHT);
+  const [height, setHeight] = createSignal(getDefaultHeight());
   let textareaRef: HTMLTextAreaElement | undefined;
 
   const calculateHeight = (el: HTMLTextAreaElement) => {
+    const defH = getDefaultHeight();
     if (el.value === '') {
-      // reset height when value is empty
-      setHeight(props.isFullPage ? FULL_DEFAULT_HEIGHT : BUBBLE_DEFAULT_HEIGHT);
+      setHeight(defH);
     } else {
-      const minHeight = props.isFullPage ? FULL_DEFAULT_HEIGHT : BUBBLE_DEFAULT_HEIGHT;
-      el.style.height = `${minHeight}px`;
-
-      const newHeight = Math.max(minHeight, el.scrollHeight);
+      el.style.height = `${defH}px`;
+      const newHeight = Math.max(defH, el.scrollHeight);
       setHeight(newHeight);
     }
   }
@@ -108,13 +108,14 @@ export const ShortTextInput = (props: ShortTextInputProps) => {
         }
       }}
       class={`focus:outline-none bg-transparent ${props.isFullPage ? 'px-4' : 'px-2'} ${
-        props.isFullPage ? 'py-4 min-h-[56px] max-h-[128px]' : 'py-3 min-h-[50px] max-h-[128px]'
+        props.inputHeight ? `py-3 max-h-[128px]` : (props.isFullPage ? 'py-4 min-h-[56px] max-h-[128px]' : 'py-3 min-h-[50px] max-h-[128px]')
       } flex-1 w-full text-input disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-100 `}
       disabled={props.disabled}
       style={{
         'font-size': props.fontSize ? `${props.fontSize}px` : '16px',
         resize: 'none',
-        height: `${props.value !== '' ? height() : props.isFullPage ? FULL_DEFAULT_HEIGHT : BUBBLE_DEFAULT_HEIGHT}px`,
+        height: `${props.value !== '' ? height() : getDefaultHeight()}px`,
+        ...(props.inputHeight ? { 'min-height': `${props.inputHeight}px` } : {}),
       }}
       onInput={handleInput}
       onKeyDown={handleKeyDown}

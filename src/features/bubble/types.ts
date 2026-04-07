@@ -24,6 +24,7 @@ export type TextInputTheme = {
   placeholder?: string;
   sendButtonSrc?: string;
   sendButtonColor?: string;
+  secondaryButtonColor?: string;
   maxChars?: number;
   maxCharsWarningMessage?: string;
   autoFocus?: boolean;
@@ -32,6 +33,7 @@ export type TextInputTheme = {
   receiveMessageSound?: boolean;
   receiveSoundLocation?: string;
   isSpeechToTextEnabled?: boolean;
+  inputHeight?: number;
 };
 
 export type UserMessageTheme = {

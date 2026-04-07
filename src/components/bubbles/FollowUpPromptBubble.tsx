@@ -16,7 +16,7 @@ export const FollowUpPromptBubble = (props: Props) => (
         data-testid="host-bubble"
         style={{
           width: 'max-content',
-          'font-size': props.starterPromptFontSize ? `${props.starterPromptFontSize}px` : '15px', // Convert to string with unit
+          'font-size': props.starterPromptFontSize ? `${props.starterPromptFontSize}px` : '16px',
           'border-radius': '15px',
           cursor: 'pointer',
         }}

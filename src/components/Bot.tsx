@@ -363,7 +363,7 @@ const FormInputView = (props: {
     <div
       class="w-full h-full flex flex-col items-center justify-center px-4 py-8 rounded-lg"
       style={{
-        'font-family': 'Poppins, sans-serif',
+        'font-family': 'TbwBase, arial, sans-serif',
         'font-size': props.fontSize ? `${props.fontSize}px` : '16px',
         background: props.parentBackgroundColor || defaultBackgroundColor,
         color: props.textColor || defaultTextColor,
@@ -372,7 +372,7 @@ const FormInputView = (props: {
       <div
         class="w-full max-w-md bg-white shadow-lg rounded-lg overflow-hidden"
         style={{
-          'font-family': 'Poppins, sans-serif',
+          'font-family': 'TbwBase, arial, sans-serif',
           'font-size': props.fontSize ? `${props.fontSize}px` : '16px',
           background: props.backgroundColor || defaultBackgroundColor,
           color: props.textColor || defaultTextColor,
@@ -2512,7 +2512,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                 showCloseButton={!props.isFullPage && props.showCloseButton}
                 on:click={clearChat}
               >
-                <span style={{ 'font-family': 'Poppins, sans-serif' }}>{props.resources?.labels?.CLEAR ?? "Clear"}</span>
+                <span style={{ 'font-family': 'TbwBase, arial, sans-serif' }}>{props.resources?.labels?.CLEAR ?? "Clear"}</span>
               </DeleteButton>
               <Show when={props.showCloseButton && (botProps.observersConfig?.observeCloseClick || props.closeBot)}>
                 <CloseButton
@@ -2656,7 +2656,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                         prompt={key}
                         onPromptClick={() => promptClick(key)}
                         backgroundColor={props.botMessage?.backgroundColor ?? defaultBackgroundColor}
-                        starterPromptFontSize={botProps.starterPromptFontSize} // Pass it here as a number
+                        starterPromptFontSize={botProps.starterPromptFontSize ?? props.fontSize}
                       />
                     )}
                   </For>
@@ -2676,7 +2676,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                         <FollowUpPromptBubble
                           prompt={prompt}
                           onPromptClick={() => followUpPromptClick(prompt)}
-                          starterPromptFontSize={botProps.starterPromptFontSize} // Pass it here as a number
+                          starterPromptFontSize={botProps.starterPromptFontSize ?? props.fontSize}
                         />
                       )}
                     </For>
@@ -2708,13 +2708,14 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                   ) : (
                     <div
                       class={`h-auto max-h-[192px] ${
-                        props.isFullPage ? 'min-h-[56px]' : 'min-h-[50px]'
+                        props.textInput?.inputHeight ? '' : (props.isFullPage ? 'min-h-[56px]' : 'min-h-[50px]')
                       } flex items-center justify-between chatbot-input border border-[#eeeeee]`}
                       data-testid="input"
                       style={{
                         margin: 'auto',
                         'background-color': props.textInput?.backgroundColor ?? defaultBackgroundColor,
                         color: props.textInput?.textColor ?? defaultTextColor,
+                        ...(props.textInput?.inputHeight ? { 'min-height': `${props.textInput.inputHeight}px` } : {}),
                       }}
                     >
                       <div class="flex items-center gap-3 px-4 py-2">
@@ -2728,24 +2729,26 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                         <CancelButton
                           buttonColor={props.textInput?.sendButtonColor}
                           type="button"
-                          class={`m-0 ${props.isFullPage ? 'h-14' : 'h-[50px]'} flex items-center justify-center`}
+                          class={`m-0 ${props.textInput?.inputHeight ? '' : (props.isFullPage ? 'h-14' : 'h-[50px]')} flex items-center justify-center`}
+                          style={props.textInput?.inputHeight ? { height: `${props.textInput.inputHeight}px` } : {}}
                           isFullPage={props.isFullPage}
                           on:click={onRecordingCancelled}
                         >
-                          <span style={{ 'font-family': 'Poppins, sans-serif' }}>Send</span>
+                          <span style={{ 'font-family': 'TbwBase, arial, sans-serif' }}>Send</span>
                         </CancelButton>
                         <SendButton
                           sendButtonColor={props.textInput?.sendButtonColor}
                           sendButtonSrc={props.textInput?.sendButtonSrc}
                           type="button"
                           isDisabled={loading()}
-                          class={`m-0 ${props.isFullPage ? 'h-14' : 'h-[50px]'} flex items-center justify-center ${
+                          class={`m-0 ${props.textInput?.inputHeight ? '' : (props.isFullPage ? 'h-14' : 'h-[50px]')} flex items-center justify-center ${
                             uploadsConfig()?.isSpeechToTextEnabled ? (props.isFullPage ? 'pl-3 pr-4' : 'pl-1.5 pr-4') : 'px-4'
                           }`}
+                          style={props.textInput?.inputHeight ? { height: `${props.textInput.inputHeight}px` } : {}}
                           width={props.isFullPage ? '24px' : '26px'}
                           on:click={onRecordingStopped}
                         >
-                          <span style={{ 'font-family': 'Poppins, sans-serif' }}>Send</span>
+                          <span style={{ 'font-family': 'TbwBase, arial, sans-serif' }}>Send</span>
                         </SendButton>
                       </div>
                     </div>
@@ -2757,7 +2760,9 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                   textColor={props.textInput?.textColor}
                   placeholder={props.textInput?.placeholder}
                   sendButtonColor={props.textInput?.sendButtonColor}
+                  secondaryButtonColor={props.textInput?.secondaryButtonColor}
                   sendButtonSrc={props.textInput?.sendButtonSrc}
+                  inputHeight={props.textInput?.inputHeight}
                   maxChars={props.textInput?.maxChars}
                   maxCharsWarningMessage={props.textInput?.maxCharsWarningMessage}
                   autoFocus={props.textInput?.autoFocus}

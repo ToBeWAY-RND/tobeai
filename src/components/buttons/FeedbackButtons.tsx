@@ -19,7 +19,7 @@ export const CopyToClipboardButton = (props: RatingButtonProps) => {
       disabled={props.isDisabled || props.isLoading}
       {...props}
       class={
-        'p-2 justify-center font-semibold text-white focus:outline-none flex items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-100 transition-all filter hover:brightness-90 active:brightness-75 chatbot-button ' +
+        'pt-[2px] px-2 justify-center font-semibold text-white focus:outline-none flex items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-100 transition-all filter hover:brightness-90 active:brightness-75 chatbot-button ' +
         props.class
       }
       style={{ background: 'transparent', border: 'none' }}
@@ -39,7 +39,7 @@ export const ThumbsUpButton = (props: RatingButtonProps) => {
       disabled={props.isDisabled || props.isLoading}
       {...props}
       class={
-        'p-2 justify-center font-semibold text-white focus:outline-none flex items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-100 transition-all filter hover:brightness-90 active:brightness-75 chatbot-button ' +
+        'pt-[2px] px-2 justify-center font-semibold text-white focus:outline-none flex items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-100 transition-all filter hover:brightness-90 active:brightness-75 chatbot-button ' +
         props.class
       }
       style={{ background: 'transparent', border: 'none' }}
@@ -59,7 +59,7 @@ export const ThumbsDownButton = (props: RatingButtonProps) => {
       disabled={props.isDisabled || props.isLoading}
       {...props}
       class={
-        'p-2 justify-center font-semibold text-white focus:outline-none flex items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-100 transition-all filter hover:brightness-90 active:brightness-75 chatbot-button ' +
+        'pt-[2px] px-2 justify-center font-semibold text-white focus:outline-none flex items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-100 transition-all filter hover:brightness-90 active:brightness-75 chatbot-button ' +
         props.class
       }
       style={{ background: 'transparent', border: 'none' }}

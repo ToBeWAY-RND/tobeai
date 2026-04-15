@@ -1017,7 +1017,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
               const allMessages = [...cloneDeep(prevMessages)];
               if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {
                 if (allMessages[allMessages.length - 1].pendingAction) return prevMessages;
-                allMessages[allMessages.length - 1].pendingAction = allMessages[allMessages.length - 1].action;
+                allMessages[allMessages.length - 1].pendingAction = parsedAction;
                 allMessages[allMessages.length - 1].action = null;
               }
               addChatMessage(allMessages);
@@ -1026,28 +1026,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
             return;
           }
 
-          await handleSubmit('', parsedAction, result, true);
-        })();
-        return;
-      }
-
-      // @deprecated 레거시 폴백 — callJS가 없는 경우
-      const legacyActions: Record<string, ((data: any) => any) | undefined> = {
-        search: props.observersConfig?.applySearch,
-        fill_input: props.observersConfig?.applyInputField,
-        get_value_pattern: props.observersConfig?.getValuePatterns,
-        clear_fields: props.observersConfig?.clearFields,
-        clear_all_fields: props.observersConfig?.clearAllFields,
-        open_search_window: props.observersConfig?.openSearchWindow,
-        submit: props.observersConfig?.submitForm,
-      };
-      const legacyFn = legacyActions[actionName];
-      if (legacyFn) {
-        const data: any = parsedAction.data || {};
-        setLoading(true);
-        (async () => {
-          let result: any = { ok: true };
-          try { result = await legacyFn(data); } catch (e) { result = { ok: false, error: String(e) }; }
           await handleSubmit('', parsedAction, result, true);
         })();
         return;

@@ -1964,7 +1964,6 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 
     // eslint-disable-next-line solid/reactivity
     return () => {
-      setUserInput('');
       setUploadedFiles([]);
       setLoading(false);
       setMessages([

@@ -93,6 +93,7 @@ export type IAction = {
   elements?: Array<{
     type: string;
     label: string;
+    description?: string;
     prop_field?: string;
     prop_id?: string;
   }>;
@@ -193,8 +194,6 @@ export type ResourceLabels = {
   SKIP?: string;
   CHOOSE_DEFAULT?: string;
   NULL_VALUE?: string;
-  CHOOSE_ONE?: Record<string, string>;
-  CATEGORY_LABELS?: Record<string, string>;
   // 일반 UI 라벨 — ChatbotLabelUtil 키와 일치 (SCREAMING_SNAKE_CASE)
   COPY_TO_CLIPBOARD?: string;
   THUMBS_UP?: string;
@@ -895,61 +894,16 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 		setShowLoadingBubble(false);
       const data: any = parsedAction.data || {};
 
-      const sprintf = (s: string, ...args: string[]) => {
-        // Only %s works
-        let i = 0;
-        return s.replace(/%s/g, () => String(args[i++]));
-      };
-
-      let prompt: string;
-
-      const prompts: Record<string, string> = props.resources?.labels?.CHOOSE_ONE ?? {};
-      type PromptKey = keyof typeof prompts;
-
-      const chooseDefault = props.resources?.labels?.CHOOSE_DEFAULT || 'Please select an option';
-      const promptType = data?.prompt_type as PromptKey;
-      const promptArgs: Array<string> = data?.prompt_args || [];
-
-      if (promptType && prompts[promptType] && promptArgs && promptArgs.length > 0) {
-        prompt = sprintf(prompts[promptType], ...promptArgs);
-      } else if (promptType && prompts[promptType]) {
-        prompt = prompts[promptType];
-      } else {
-        prompt = chooseDefault;
-      }
-
-      let options: any[];
-
-      if (promptType === 'CATEGORY') {
-        const defaultCategoryLabels: Record<string, string> = { CLASS: 'Class', PROPERTY: 'Property', AREA: 'Area' };
-        const categoryLabels = props.resources?.labels?.CATEGORY_LABELS
-          ? { ...defaultCategoryLabels, ...props.resources.labels.CATEGORY_LABELS }
-          : defaultCategoryLabels;
-        const categories: Array<string> = data?.options || [];
-        options = categories
-          .map((category) => ({
-            label: categoryLabels[category] ?? null,
-            type: category,
-          }))
-          .filter((option) => option.label !== null);
-      } else {
-        options = data?.options || [];
-      }
-
-      const addNull: boolean = data?.add_null ?? false;
-      if (!options || (options.length == 0 && !addNull)) return;
-
-      if (addNull) {
-        // Null 버튼 추가
-        options.push({ type: '__NULL__', label: props.resources?.labels?.NULL_VALUE || 'No value' });
-      }
+      const prompt: string = data.question || 'Please select an option';
+      const options: any[] = Array.isArray(data?.options) ? [...data.options] : [];
 
       const concat_options = options
         .map((option) => option.type)
         .sort()
         .join(',');
 
-      const cacheKey = promptType + ':' + promptArgs.join('|') + ':' + concat_options;
+      // Cache key uses the question + option set; stable within a conversation.
+      const cacheKey = prompt + ':' + concat_options;
 
       (async () => {
         try {
@@ -1011,7 +965,8 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
             result = { ok: false, error: String(e) };
           }
 
-          // 'hold' → 액션을 보류 상태로 전환 (예: classid 변경 시 페이지 이동 대기)
+          // 'hold' → 액션을 보류 상태로 전환 (예: classid 변경 시 페이지 이동 대기).
+          // pendingAction은 페이지 재로드 후 자동 재시도용. 해제는 아래 non-hold 분기에서 처리.
           if (result && result.hold === true) {
             setMessages((prevMessages) => {
               const allMessages = [...cloneDeep(prevMessages)];
@@ -1025,6 +980,20 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
             });
             return;
           }
+
+          // Non-hold → 액션 처리 완료. 이전 턴에서 hold 로 저장해둔 pendingAction 이 있다면
+          // 여기서 해제해야 함. 그렇지 않으면 페이지 재로드마다 같은 액션이 무한 재시도되어
+          // 이미 resolve 된 interruptId 로 humanInput 을 계속 보내게 된다.
+          setMessages((prevMessages) => {
+            if (prevMessages.length === 0) return prevMessages;
+            const lastIdx = prevMessages.length - 1;
+            const last = prevMessages[lastIdx];
+            if (last.type !== 'apiMessage' || !last.pendingAction) return prevMessages;
+            const cleared = [...prevMessages];
+            cleared[lastIdx] = { ...last, pendingAction: null };
+            addChatMessage(cleared);
+            return cleared;
+          });
 
           await handleSubmit('', parsedAction, result, true);
         })();
@@ -1978,7 +1947,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
 	const firstMessage = messages()[0];
 	if (firstMessage && firstMessage.type === 'apiMessage') {
 		const welcomeMessage = props.welcomeMessage ?? defaultWelcomeMessage;
-		if (firstMessage.message !== welcomeMessage) {
+		if (!firstMessage.message.startsWith(welcomeMessage)) {
 			setMessages((prevMessages) => {
 				const allMessages = [...cloneDeep(prevMessages)];
 				if (allMessages.length > 0 && allMessages[allMessages.length - 1].type === 'apiMessage') {
@@ -2485,7 +2454,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
               <DeleteButton
                 sendButtonColor={props.closeButtonColor}
                 type="button"
-                isDisabled={messages().length === 1}
+                isDisabled={messages().length === 1 && messages()[0].message === (props.welcomeMessage ?? defaultWelcomeMessage)}
                 class="my-2"
                 showCloseButton={!props.isFullPage && props.showCloseButton}
                 on:click={clearChat}

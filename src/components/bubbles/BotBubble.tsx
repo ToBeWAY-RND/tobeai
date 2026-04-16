@@ -668,10 +668,15 @@ export const BotBubble = (props: Props) => {
                       ) : (
                         <button
                           type="button"
-                          class="px-4 py-2 font-medium text-gray-700 border border-gray-300 rounded-full hover:bg-gray-100 transition-colors duration-300 text-left"
+                          class="px-4 py-2 font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-100 transition-colors duration-300 text-left flex flex-col items-start"
                           onClick={() => props.handleActionClick(action, props.message.action)}
                         >
-                          {action.label}
+                          <span>{action.label}</span>
+                          {action.description && (
+                            <span class="text-xs text-gray-500 font-normal mt-0.5">
+                              {action.description}
+                            </span>
+                          )}
                         </button>
                       )}
                     </>

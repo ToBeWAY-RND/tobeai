@@ -215,6 +215,7 @@ export type ResourceLabels = {
   FILE_SIZE_EXCEEDED?: string;
   INVALID_FILE_TYPE?: string;
   DROP_HERE_TO_UPLOAD?: string;
+  TRY_THESE_PROMPTS?: string;
 };
 
 export type BotResources = {
@@ -2412,7 +2413,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
               style={{
                 background: props.titleBackgroundColor || props.bubbleBackgroundColor || defaultTitleBackgroundColor,
                 color: props.titleTextColor || props.bubbleTextColor || defaultBackgroundColor,
-                'border-bottom': ((props.chatflowConfig as any)?.vars?.chatType === 'MANUAL') ? '1px solid #CED4DA' : undefined,
+                'border-bottom': (props.chatflowConfig as any)?.vars?.chatType === 'MANUAL' ? '1px solid #CED4DA' : undefined,
               }}
             >
               <Show when={props.titleAvatarSrc}>
@@ -2439,7 +2440,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                     options={props.mdmModules?.values || []}
                     label={props.mdmModules?.label}
                     defaultValue={props.mdmModules?.defaultValue}
-                    placeholder={props.resources?.labels?.MODULE_PLACEHOLDER ?? "Module"}
+                    placeholder={props.resources?.labels?.MODULE_PLACEHOLDER ?? 'Module'}
                     onChange={(value: string) => {
                       // 선택된 MDM 모듈 값을 chatflowConfig에 저장
                       if (botProps.chatflowConfig?.vars) {
@@ -2458,7 +2459,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                 showCloseButton={!props.isFullPage && props.showCloseButton}
                 on:click={clearChat}
               >
-                <span style={{ 'font-family': 'TbwBase, arial, sans-serif' }}>{props.resources?.labels?.CLEAR ?? "Clear"}</span>
+                <span style={{ 'font-family': 'TbwBase, arial, sans-serif' }}>{props.resources?.labels?.CLEAR ?? 'Clear'}</span>
               </DeleteButton>
               <Show when={props.showCloseButton && (botProps.observersConfig?.observeCloseClick || props.closeBot)}>
                 <CloseButton
@@ -2614,7 +2615,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                 <>
                   <div class="flex items-center gap-1 px-5">
                     <SparklesIcon class="w-4 h-4" />
-                    <span class="text-sm text-gray-700">Try these prompts</span>
+                    <span class="text-sm text-gray-700">{props.resources?.labels?.TRY_THESE_PROMPTS ?? 'Try these prompts'}</span>
                   </div>
                   <div class="w-full flex flex-row flex-wrap px-5 py-[10px] gap-2">
                     <For each={[...followUpPrompts()]}>
@@ -2654,7 +2655,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                   ) : (
                     <div
                       class={`h-auto max-h-[192px] ${
-                        props.textInput?.inputHeight ? '' : (props.isFullPage ? 'min-h-[56px]' : 'min-h-[50px]')
+                        props.textInput?.inputHeight ? '' : props.isFullPage ? 'min-h-[56px]' : 'min-h-[50px]'
                       } flex items-center justify-between chatbot-input border border-[#eeeeee]`}
                       data-testid="input"
                       style={{
@@ -2675,7 +2676,7 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                         <CancelButton
                           buttonColor={props.textInput?.sendButtonColor}
                           type="button"
-                          class={`m-0 ${props.textInput?.inputHeight ? '' : (props.isFullPage ? 'h-14' : 'h-[50px]')} flex items-center justify-center`}
+                          class={`m-0 ${props.textInput?.inputHeight ? '' : props.isFullPage ? 'h-14' : 'h-[50px]'} flex items-center justify-center`}
                           style={props.textInput?.inputHeight ? { height: `${props.textInput.inputHeight}px` } : {}}
                           isFullPage={props.isFullPage}
                           on:click={onRecordingCancelled}
@@ -2687,7 +2688,9 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
                           sendButtonSrc={props.textInput?.sendButtonSrc}
                           type="button"
                           isDisabled={loading()}
-                          class={`m-0 ${props.textInput?.inputHeight ? '' : (props.isFullPage ? 'h-14' : 'h-[50px]')} flex items-center justify-center ${
+                          class={`m-0 ${
+                            props.textInput?.inputHeight ? '' : props.isFullPage ? 'h-14' : 'h-[50px]'
+                          } flex items-center justify-center ${
                             uploadsConfig()?.isSpeechToTextEnabled ? (props.isFullPage ? 'pl-3 pr-4' : 'pl-1.5 pr-4') : 'px-4'
                           }`}
                           style={props.textInput?.inputHeight ? { height: `${props.textInput.inputHeight}px` } : {}}

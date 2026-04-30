@@ -609,7 +609,10 @@ export const Bot = (botProps: BotProps & { class?: string }) => {
       }
 
       const vars: any = (props.chatflowConfig as any)?.vars || {};
-      const aimlHost: string | undefined = vars.aimlUrl;
+      // 로그 엔드포인트도 apiHost 와 같은 호스트(=MDM 프록시)로 보낸다 — vars.aimlUrl 은
+      // AIML 서버측 MCP 가 사용하는 실제 URL 이라 브라우저에서 직접 호출하면 cross-origin
+      // CORS preflight 가 떠서 X-MDM-Token 없이 401 나는 문제 회피.
+      const aimlHost: string | undefined = props.apiHost || vars.aimlUrl;
       const msg: any = candidate;
       const payload: any = {
         apiHost: props.apiHost || '',

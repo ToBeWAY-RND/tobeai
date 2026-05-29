@@ -19,6 +19,7 @@ export const ShortTextInput = (props: ShortTextInputProps) => {
   const getDefaultHeight = () => props.inputHeight ?? (props.isFullPage ? FULL_DEFAULT_HEIGHT : BUBBLE_DEFAULT_HEIGHT);
   const [height, setHeight] = createSignal(getDefaultHeight());
   let textareaRef: HTMLTextAreaElement | undefined;
+  let isComposing = false;
 
   const calculateHeight = (el: HTMLTextAreaElement) => {
     const defH = getDefaultHeight();
@@ -36,8 +37,19 @@ export const ShortTextInput = (props: ShortTextInputProps) => {
     if (props.ref) {
       calculateHeight(e.currentTarget);
       e.currentTarget.scrollTo(0, e.currentTarget.scrollHeight);
-      local.onInput(e.currentTarget.value);
+      // 조합 중에는 propagate 하지 않는다. compositionend 에서 최종값을 전달.
+      if (!isComposing) local.onInput(e.currentTarget.value);
     }
+  };
+
+  const handleCompositionStart = () => {
+    isComposing = true;
+  };
+
+  // @ts-expect-error: unknown type
+  const handleCompositionEnd = (e) => {
+    isComposing = false;
+    if (props.ref) local.onInput(e.currentTarget.value);
   };
 
   onMount(() => {
@@ -118,6 +130,8 @@ export const ShortTextInput = (props: ShortTextInputProps) => {
         ...(props.inputHeight ? { 'min-height': `${props.inputHeight}px` } : {}),
       }}
       onInput={handleInput}
+      onCompositionStart={handleCompositionStart}
+      onCompositionEnd={handleCompositionEnd}
       onKeyDown={handleKeyDown}
       onPaste={(e) => {
         const files = Array.from(e.clipboardData?.files || []);

@@ -1,4 +1,4 @@
-import { createSignal, splitProps, createEffect, onMount } from 'solid-js';
+import { createSignal, splitProps, createEffect } from 'solid-js';
 import { JSX } from 'solid-js/jsx-runtime';
 
 type ShortTextInputProps = {
@@ -15,7 +15,9 @@ const FULL_DEFAULT_HEIGHT = 56;
 const BUBBLE_DEFAULT_HEIGHT = 50;
 
 export const ShortTextInput = (props: ShortTextInputProps) => {
-  const [local, others] = splitProps(props, ['ref', 'onInput', 'onPasteFiles']);
+  // value 는 스프레드({...others})에서 제외한다. 조합(IME) 중 다른 prop(disabled 등) 변경으로
+  // 스프레드가 재적용될 때 stale 한 value 가 DOM 에 덮어써지는 것을 막기 위해 직접 동기화한다.
+  const [local, others] = splitProps(props, ['ref', 'onInput', 'onPasteFiles', 'value']);
   const getDefaultHeight = () => props.inputHeight ?? (props.isFullPage ? FULL_DEFAULT_HEIGHT : BUBBLE_DEFAULT_HEIGHT);
   const [height, setHeight] = createSignal(getDefaultHeight());
   let textareaRef: HTMLTextAreaElement | undefined;
@@ -24,10 +26,16 @@ export const ShortTextInput = (props: ShortTextInputProps) => {
   const calculateHeight = (el: HTMLTextAreaElement) => {
     const defH = getDefaultHeight();
     if (el.value === '') {
+      // 값이 없으면 기본 높이로 복원.
+      el.style.height = `${defH}px`;
       setHeight(defH);
     } else {
+      // 먼저 기본 높이로 줄여 scrollHeight 를 정확히 측정한 뒤, 최종 높이를 직접(권위적으로) 적용한다.
+      // 반응형 style 은 height() 시그널이 '변할 때만' 재실행되므로, 같은 줄에서 타이핑 시
+      // (scrollHeight 불변) DOM 이 측정용 defH 에 멈춰 한 줄로 접히는 문제를 방지한다.
       el.style.height = `${defH}px`;
       const newHeight = Math.max(defH, el.scrollHeight);
+      el.style.height = `${newHeight}px`;
       setHeight(newHeight);
     }
   }
@@ -52,11 +60,16 @@ export const ShortTextInput = (props: ShortTextInputProps) => {
     if (props.ref) local.onInput(e.currentTarget.value);
   };
 
-  onMount(() => {
-    if (textareaRef && props.value) {
+  // 외부(전송 후 초기화, 프롬프트 버튼, 입력 히스토리 등)에서 value 가 바뀔 때만 DOM 에 동기화한다.
+  // 조합(IME) 중에는 절대 덮어쓰지 않는다 — 입력이 리셋되어 최근 글자만 남는 문제를 방지.
+  createEffect(() => {
+    const next = (local.value ?? '') as string; // 반응형 의존성
+    if (!textareaRef || isComposing) return;
+    if (textareaRef.value !== next) {
+      textareaRef.value = next;
       calculateHeight(textareaRef);
     }
-  })
+  });
 
   // @ts-expect-error: unknown type
   const handleKeyDown = (e) => {
@@ -126,7 +139,7 @@ export const ShortTextInput = (props: ShortTextInputProps) => {
       style={{
         'font-size': props.fontSize ? `${props.fontSize}px` : '16px',
         resize: 'none',
-        height: `${props.value !== '' ? height() : getDefaultHeight()}px`,
+        height: `${height()}px`,
         ...(props.inputHeight ? { 'min-height': `${props.inputHeight}px` } : {}),
       }}
       onInput={handleInput}
